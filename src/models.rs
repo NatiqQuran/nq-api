@@ -121,7 +121,7 @@ pub struct NewEmail<'a> {
     pub deleted: bool,
 }
 
-#[derive(Associations, Queryable, PartialEq, Debug, Serialize, Clone)]
+#[derive(Identifiable, Associations, Queryable, PartialEq, Debug, Serialize, Clone)]
 #[diesel(belongs_to(Account))]
 #[diesel(table_name = app_organizations)]
 pub struct Organization {

@@ -25,6 +25,7 @@ use routers::account::logout;
 use routers::account::send_code;
 use routers::account::verify;
 use routers::organization::add;
+use routers::organization::edit;
 use routers::organization::list;
 use routers::organization::view;
 use routers::profile::profile;
@@ -112,7 +113,8 @@ async fn main() -> std::io::Result<()> {
                     .wrap(TokenAuth::new(user_id_from_token.clone()))
                     .route("", web::get().to(list::get_list_of_organizations))
                     .route("", web::post().to(add::add))
-                    .route("/{org_id}", web::get().to(view::view)),
+                    .route("/{org_id}", web::get().to(view::view))
+                    .route("/{org_id}", web::post().to(edit::edit_organization)),
             )
     })
     .bind(("0.0.0.0", 8080))?
