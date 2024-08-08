@@ -1423,7 +1423,7 @@
           }
         },
         "tags": ["quran"],
-        "response": {
+        "responses": {
           "200": {
             "description": "This means new word added"
           }
