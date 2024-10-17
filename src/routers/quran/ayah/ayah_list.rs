@@ -49,7 +49,7 @@ pub async fn ayah_list(
         let final_ayahs = ayahs_as_map
             .into_iter()
             .map(|(ayah, words)| match query.format {
-                Format::Text => AyahTy::Text(crate::AyahWithText {
+                Some(Format::Text) | None => AyahTy::Text(crate::AyahWithText {
                     ayah,
                     text: words
                         .into_iter()
@@ -57,7 +57,7 @@ pub async fn ayah_list(
                         .collect::<Vec<String>>()
                         .join(" "),
                 }),
-                Format::Word => AyahTy::Words(crate::AyahWithWords {
+                Some(Format::Word) => AyahTy::Words(crate::AyahWithWords {
                     ayah,
                     words: words.into_iter().map(|word| word).collect(),
                 }),

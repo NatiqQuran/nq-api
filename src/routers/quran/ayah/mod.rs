@@ -69,7 +69,7 @@ pub struct SimpleAyah {
 #[derive(Deserialize, Clone)]
 pub struct AyahListQuery {
     mushaf: String,
-    format: Format,
+    format: Option<Format>,
 
     sort: Option<String>,
     order: Option<Order>,
