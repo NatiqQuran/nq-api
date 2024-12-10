@@ -981,53 +981,95 @@
             "in": "query",
             "required": false,
             "name": "sort",
+            "description": "Field to sort the results by",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": ["name", "createTime", "updateTime"]
             }
           },
-
           {
             "in": "query",
             "required": false,
             "name": "order",
+            "description": "Order of the results. 'asc' for ascending and 'desc' for descending.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": ["asc", "desc"]
             }
           },
-
           {
             "in": "query",
             "required": false,
             "name": "from",
+            "description": "The starting index of the mushafs list",
             "schema": {
-              "type": "number"
+              "type": "integer",
+              "format": "int64"
             }
           },
-
           {
             "in": "query",
             "required": false,
             "name": "to",
+            "description": "The ending index of the mushafs list",
             "schema": {
-              "type": "number"
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
         "tags": ["quran", "general"],
         "responses": {
           "200": {
-            "description": "Returns the mushafs list"
+            "description": "Returns the mushafs list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "uuid": {
+                        "type": "string",
+                        "description": "UUID of the mushaf"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Full name of the mushaf"
+                      },
+                      "short_name": {
+                        "type": "string",
+                        "description": "Short name of the mushaf"
+                      },
+                      "source": {
+                        "type": "string",
+                        "description": "Source of the mushaf"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "uuid": "ccbd8806-53e8-4658-8281-3aed10b50898",
+                    "short_name": "hafs",
+                    "name": "Hafs an Asem",
+                    "source": "tanzil"
+                  }
+                ]
+              }
+            }
           }
         }
       },
       "post": {
-        "description": "Add the new mushaf",
+        "description": "Add a new mushaf",
         "security": [
           {
             "ApiKeyAuth": []
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -1035,23 +1077,23 @@
                 "properties": {
                   "short_name": {
                     "type": "string",
-                    "description": "The mushaf short name, Must be one word with only '_' and {'1'..'9'}",
+                    "description": "The mushaf short name, must be one word with only '_' and {'1'..'9'}.",
                     "example": "hafs"
                   },
                   "name": {
                     "type": "string",
-                    "description": "The mushaf full name",
-                    "example": "hafs from asem"
+                    "description": "The full name of the mushaf.",
+                    "example": "Hafs an Asem"
                   },
                   "source": {
                     "type": "string",
-                    "description": "The mushaf text source",
+                    "description": "The source of the mushaf's text.",
                     "example": "tanzil"
                   },
-                  "completed": {
-                    "type": "boolean",
-                    "description": "If the translation is completed",
-                    "example": "true OR false"
+                  "bismillah_text": {
+                    "type": "string",
+                    "description": "Optional custom text for Bismillah.",
+                    "example": "In the name of Allah, the Most Gracious, the Most Merciful"
                   }
                 }
               }
@@ -1061,33 +1103,80 @@
         "tags": ["quran"],
         "responses": {
           "200": {
-            "description": "This means new mushaf created"
+            "description": "The new mushaf has been created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "example": "Added"
+                }
+              }
+            }
           }
         }
       }
     },
     "/mushaf/{mushaf_uuid}": {
       "get": {
-        "description": "View mushaf with id you specified",
+        "description": "View mushaf with the id you specified",
         "parameters": [
           {
             "in": "path",
             "required": true,
             "name": "mushaf_uuid",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID of the mushaf to view",
+              "example": "ccbd8806-53e8-4658-2381-3aed10b50898"
             }
           }
         ],
         "tags": ["quran", "general"],
         "responses": {
           "200": {
-            "description": "Returns the mushaf with id you specified"
+            "description": "Returns the mushaf with the id you specified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "uuid": {
+                      "type": "string",
+                      "description": "UUID of the mushaf"
+                    },
+                    "short_name": {
+                      "type": "string",
+                      "description": "Short name of the mushaf"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Full name of the mushaf"
+                    },
+                    "source": {
+                      "type": "string",
+                      "description": "Source of the mushaf"
+                    },
+                    "bismillah_text": {
+                      "type": "string",
+                      "description": "The Bismillah text in the mushaf"
+                    }
+                  }
+                },
+                "example": {
+                  "uuid": "ccbd8806-53e8-4658-8281-3aed10b50898",
+                  "short_name": "hafs",
+                  "name": "Hafs an Asem",
+                  "source": "tanzil",
+                  "bismillah_text": "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ"
+                }
+              }
+            }
           }
         }
       },
       "post": {
-        "description": "Edit mushaf with id you specified",
+        "description": "Edit mushaf with the UUID you specified",
         "security": [
           {
             "ApiKeyAuth": []
@@ -1098,12 +1187,16 @@
             "in": "path",
             "required": true,
             "name": "mushaf_uuid",
+            "description": "The UUID of the mushaf to edit",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid",
+              "example": "ccbd8806-53e8-4658-8281-3aed10b50898"
             }
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -1111,22 +1204,22 @@
                 "properties": {
                   "short_name": {
                     "type": "string",
-                    "description": "The mushaf short name, Must be one word with only '_' and {'1'..'9'}",
+                    "description": "The mushaf short name, must be one word with only '_' and {'1'..'9'}.",
                     "example": "hafs"
                   },
                   "name": {
                     "type": "string",
-                    "description": "The mushaf full name",
-                    "example": "hafs as asem"
+                    "description": "The full name of the mushaf.",
+                    "example": "Hafs an Asem"
                   },
                   "source": {
                     "type": "string",
-                    "description": "The mushaf text source",
+                    "description": "The source of the mushaf's text.",
                     "example": "tanzil"
                   },
                   "bismillah_text": {
                     "type": "string",
-                    "description": "The mushaf bismillah text",
+                    "description": "Optional custom text for Bismillah.",
                     "example": "بسم الله الرحمن الرحيم"
                   }
                 },
@@ -1138,12 +1231,20 @@
         "tags": ["quran"],
         "responses": {
           "200": {
-            "description": "Mushaf with id you specified edited"
+            "description": "Mushaf with the UUID you specified has been edited successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "example": "Edited"
+                }
+              }
+            }
           }
         }
       },
       "delete": {
-        "description": "Delete mushaf with id you specified",
+        "description": "Delete a mushaf by the specified UUID",
         "security": [
           {
             "ApiKeyAuth": []
@@ -1154,15 +1255,26 @@
             "in": "path",
             "required": true,
             "name": "mushaf_uuid",
+            "description": "The UUID of the mushaf to delete",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid",
+              "example": "ccbd8806-53e8-4658-8281-3aed10b50898"
             }
           }
         ],
         "tags": ["quran"],
         "responses": {
           "200": {
-            "description": "Mushaf with id you specified deleted"
+            "description": "Mushaf deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "example": "Deleted"
+                }
+              }
+            }
           }
         }
       }
