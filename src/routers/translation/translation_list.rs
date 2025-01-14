@@ -74,7 +74,7 @@ pub async fn translation_list(
             translations_list = translations_list.filter(translation_lang.eq(lang));
         }
 
-        let translations_list = if let Some(translator_uuid) = query.translator_account {
+        let translations_list = if let Some(translator_uuid) = query.translator_account_uuid {
             translations_list
                 .inner_join(app_accounts.left_join(app_user_names))
                 .filter(translation_mushaf_id.eq(mushafid))

@@ -76,7 +76,7 @@ pub struct SimpleTranslationAyah {
 pub struct TranslationListQuery {
     language: Option<String>,
     mushaf: String,
-    translator_account: Option<Uuid>,
+    translator_account_uuid: Option<Uuid>,
 
     sort: Option<String>,
     order: Option<Order>,

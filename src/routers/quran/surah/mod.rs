@@ -104,8 +104,11 @@ pub struct SimpleAyah {
     pub id: u32,
     pub number: u32,
     pub uuid: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sajdah: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bismillah: Option<AyahBismillah>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub breakers: Option<Vec<Breaker>>,
 }
 
