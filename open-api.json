@@ -112,6 +112,173 @@
             "language"
           ]
         }
+      },
+      "UserAddrequestBody": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 12,
+            "example": "Abbas123",
+            "description": "The unique username for new profile"
+          },
+          "primary_email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "\\.[Ii][Oo]$",
+            "description": "Unique email for the a account"
+          },
+          "first_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16,
+            "description": "The first name of user"
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16,
+            "description": "The last name of user"
+          },
+          "birthday": {
+            "type": "string",
+            "format": "date",
+            "description": "Birthday date of user profile, minDate is 200 years past"
+          },
+          "profile_image": {
+            "type": "string",
+            "example": "https://example.com/profile-image.jpg",
+            "description": "The url of a profile image"
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2,
+            "example": "en",
+            "description": "User's speaking language."
+          }
+        },
+        "required": [
+          "username",
+          "primary_email",
+          "first_name",
+          "last_name",
+          "birthday",
+          "language"
+        ]
+      },
+      "ProfileListResponseData": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "uuid": {
+              "type": "string",
+              "format": "uuid",
+              "nullable": false,
+              "description": "User Unique Identifier"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "pattern": "\\.[Ii][Oo]$",
+              "nullable": false,
+              "description": "User email address"
+            },
+            "username": {
+              "type": "string",
+              "nullable": false,
+              "example": "u012",
+              "description": "The user unique username"
+            },
+            "first_name": {
+              "type": "string",
+              "nullable": true,
+              "description": "The first name of user"
+            },
+            "last_name": {
+              "type": "string",
+              "nullable": true,
+              "description": "The last name of user"
+            },
+            "birthday": {
+              "type": "string",
+              "format": "date",
+              "nullable": true,
+              "description": "User's date of birth"
+            },
+            "profile_image": {
+              "type": "string",
+              "nullable": true,
+              "example": "https://example.com/profile-image.jpg",
+              "description": "The url of a profile image"
+            },
+            "language": {
+              "type": "string",
+              "nullable": false,
+              "example": "en",
+              "description": "User's speaking language."
+            }
+          },
+          "required": [
+            "uuid",
+            "email",
+            "username",
+            "first_name",
+            "last_name",
+            "birthday",
+            "profile_image",
+            "language"
+          ]
+        }
+      },
+      "ProfileEditrequestBody": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 12,
+            "description": "The unique username for user"
+          },
+          "first_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16,
+            "description": "First name of user profile"
+          },
+          "last_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16,
+            "description": "Last name of user profile"
+          },
+          "birthday": {
+            "type": "string",
+            "format": "date",
+            "description": "Birthday date of user profile, minDate is 200 years past"
+          },
+          "profile_image": {
+            "type": "string",
+            "example": "https://example.com/profile-image.jpg",
+            "description": "Profile image of user profile."
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2,
+            "example": "en",
+            "description": "User's speaking language."
+          }
+        },
+        "required": [
+          "username",
+          "first_name",
+          "last_name",
+          "birthday",
+          "language"
+        ]
       }
     }
   },
@@ -350,62 +517,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "username": {
-                    "type": "string",
-                    "description": "The unique username for new profile",
-                    "example": "Abbas123",
-                    "minLength": 6,
-                    "maxLength": 12
-                  },
-                  "primary_email": {
-                    "type": "string",
-                    "format": "email",
-                    "pattern": "\\.[Ii][Oo]$",
-                    "description": "Unique email for the a account",
-                    "example": "info@natiq.com"
-                  },
-                  "first_name": {
-                    "type": "string",
-                    "description": "The first name of user",
-                    "example": "Abbas",
-                    "minLength": 1,
-                    "maxLength": 16
-                  },
-                  "last_name": {
-                    "type": "string",
-                    "description": "The last name of user",
-                    "example": "Mowzoon",
-                    "minLength": 1,
-                    "maxLength": 16
-                  },
-                  "birthday": {
-                    "type": "string",
-                    "description": "Birthday date of user profile, minDate is 200 years past",
-                    "example": "1988-03-12"
-                  },
-                  "profile_image": {
-                    "type": "string",
-                    "description": "The url of a profile image",
-                    "example": "https://assets.natiq.com/mahdi-profile-image.jpg"
-                  },
-                  "language": {
-                    "type": "string",
-                    "description": "User's speaking language.",
-                    "example": "en",
-                    "minLength": 1,
-                    "maxLength": 2
-                  }
-                },
-                "required": [
-                  "username",
-                  "email",
-                  "first_name",
-                  "last_name",
-                  "birthday",
-                  "language"
-                ]
+                "$ref": "#/components/schemas/UserAddrequestBody"
               }
             }
           }
@@ -440,7 +552,14 @@
         "tags": ["user"],
         "responses": {
           "200": {
-            "description": "Return's single user profile"
+            "description": "Return's single user profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponseData"
+                }
+              }
+            }
           }
         }
       },
@@ -466,47 +585,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "username": {
-                    "type": "string",
-                    "description": "The unique username for new profile",
-                    "example": "Abbas123",
-                    "minLength": 6,
-                    "maxLength": 12
-                  },
-                  "first_name": {
-                    "type": "string",
-                    "description": "The first name of user",
-                    "example": "Abbas",
-                    "minLength": 1,
-                    "maxLength": 16
-                  },
-                  "last_name": {
-                    "type": "string",
-                    "description": "The last name of user",
-                    "example": "Mowzoon",
-                    "minLength": 1,
-                    "maxLength": 16
-                  },
-                  "birthday": {
-                    "type": "string",
-                    "description": "The date of the birth, minDate is 200 years past",
-                    "example": "1989-12-2"
-                  },
-                  "profile_image": {
-                    "type": "string",
-                    "description": "The url of a profile image",
-                    "example": "https://assets.natiq.com/mahdi-profile-image.jpg"
-                  },
-                  "primary_email": {
-                    "type": "string",
-
-                    "description": "The primary email of the user",
-                    "example": "natiq@example.com"
-                  }
-                },
-                "required": ["username", "first_name", "last_name"]
+                "$ref": "#/components/schemas/UserAddrequestBody"
               }
             }
           }
@@ -560,64 +639,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "uuid": {
-                        "type": "string",
-                        "format": "uuid",
-                        "nullable": false,
-                        "example": "c34ac6bb-b6ce-476a-bced-1bd93387eb30"
-                      },
-                      "email": {
-                        "type": "string",
-                        "format": "email",
-                        "pattern": "\\.[Ii][Oo]$",
-                        "nullable": false,
-                        "example": "example@gmail.com"
-                      },
-                      "username": {
-                        "type": "string",
-                        "nullable": false,
-                        "example": "u312"
-                      },
-                      "first_name": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "Abbas"
-                      },
-                      "last_name": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "hamid"
-                      },
-                      "birthday": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "2002/08/02"
-                      },
-                      "profile_image": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "language": {
-                        "type": "string",
-                        "nullable": false,
-                        "example": "en"
-                      }
-                    },
-                    "required": [
-                      "uuid",
-                      "email",
-                      "username",
-                      "first_name",
-                      "last_name",
-                      "birthday",
-                      "profile_image",
-                      "language"
-                    ]
-                  }
+                  "$ref": "#/components/schemas/ProfileListResponseData"
                 }
               }
             }
@@ -636,47 +658,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "username": {
-                    "type": "string",
-                    "description": "The unique username for user",
-                    "example": "mahdidev",
-                    "minLength": 6,
-                    "maxLength": 12
-                  },
-                  "first_name": {
-                    "type": "string",
-                    "description": "First name of user profile",
-                    "example": "Mahdi",
-                    "minLength": 1,
-                    "maxLength": 16
-                  },
-                  "last_name": {
-                    "type": "string",
-                    "description": "Last name of user profile",
-                    "example": "Muslimi",
-                    "minLength": 1,
-                    "maxLength": 16
-                  },
-                  "birthday": {
-                    "type": "string",
-                    "description": "Birthday date of user profile, minDate is 200 years past",
-                    "example": "1988-03-12"
-                  },
-                  "profile_image": {
-                    "type": "string",
-                    "description": "Profile image of user profile.",
-                    "example": "https:/..."
-                  },
-                  "language": {
-                    "type": "string",
-                    "description": "User's speaking language.",
-                    "example": "en",
-                    "minLength": 1,
-                    "maxLength": 2
-                  }
-                }
+                "$ref": "#/components/schemas/ProfileEditrequestBody"
               }
             }
           }
