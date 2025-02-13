@@ -18,7 +18,7 @@
       }
     },
     "schemas": {
-      "AccountSendCoderequestBody": {
+      "AccountSendCodeRequestBody": {
         "type": "object",
         "properties": {
           "email": {
@@ -30,7 +30,7 @@
         },
         "required": ["email"]
       },
-      "AccountVerifyrequestBody": {
+      "AccountVerifyRequestBody": {
         "type": "object",
         "properties": {
           "email": {
@@ -113,7 +113,7 @@
           ]
         }
       },
-      "UserAddrequestBody": {
+      "UserAddRequestBody": {
         "type": "object",
         "properties": {
           "username": {
@@ -233,7 +233,7 @@
           ]
         }
       },
-      "ProfileEditrequestBody": {
+      "ProfileEditRequestBody": {
         "type": "object",
         "properties": {
           "username": {
@@ -338,7 +338,7 @@
           ]
         }
       },
-      "OrganizationAddrequestBody": {
+      "OrganizationAddRequestBody": {
         "type": "object",
         "properties": {
           "username": {
@@ -445,7 +445,7 @@
           "national_id"
         ]
       },
-      "OrganizationEditrequestBody": {
+      "OrganizationEditRequestBody": {
         "type": "object",
         "properties": {
           "username": {
@@ -1980,7 +1980,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AccountSendCoderequestBody"
+                "$ref": "#/components/schemas/AccountSendCodeRequestBody"
               }
             }
           }
@@ -2031,7 +2031,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AccountVerifyrequestBody"
+                "$ref": "#/components/schemas/AccountVerifyRequestBody"
               }
             }
           }
@@ -2169,7 +2169,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UserAddrequestBody"
+                "$ref": "#/components/schemas/UserAddRequestBody"
               }
             }
           }
@@ -2237,7 +2237,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UserAddrequestBody"
+                "$ref": "#/components/schemas/UserAddRequestBody"
               }
             }
           }
@@ -2310,7 +2310,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProfileEditrequestBody"
+                "$ref": "#/components/schemas/ProfileEditRequestBody"
               }
             }
           }
@@ -2359,7 +2359,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OrganizationAddrequestBody"
+                "$ref": "#/components/schemas/OrganizationAddRequestBody"
               }
             }
           }
@@ -2431,7 +2431,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OrganizationEditrequestBody"
+                "$ref": "#/components/schemas/OrganizationEditRequestBody"
               }
             }
           }
