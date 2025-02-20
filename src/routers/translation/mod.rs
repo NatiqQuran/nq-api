@@ -1,10 +1,10 @@
 pub mod translation_add;
+pub mod translation_ayah_delete;
+pub mod translation_ayah_modify;
+pub mod translation_ayah_view;
 pub mod translation_delete;
 pub mod translation_edit;
 pub mod translation_list;
-pub mod translation_text_delete;
-pub mod translation_text_modify;
-pub mod translation_text_view;
 pub mod translation_view;
 
 use chrono::NaiveDate;
@@ -43,6 +43,7 @@ pub struct TranslationAyah {
     text_uuid: Option<Uuid>,
     number: u32,
     surah_number: u32,
+    bismillah: Option<String>,
     text: Option<String>,
 }
 
@@ -53,7 +54,6 @@ pub struct ViewableTranslation {
     pub release_date: Option<NaiveDate>,
     pub source: Option<String>,
     pub status: TranslationStatus,
-    pub bismillah: String,
     pub translator: TranslatorData,
     pub ayahs: Vec<TranslationAyah>,
 }
@@ -64,19 +64,19 @@ pub struct EditableSimpleTranslation {
     pub language: String,
     pub release_date: Option<NaiveDate>,
     pub source: Option<String>,
-    pub bismillah: String,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct SimpleTranslationText {
+pub struct SimpleTranslationAyah {
     pub text: String,
+    pub bismillah: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct TranslationListQuery {
     language: Option<String>,
     mushaf: String,
-    translator_account: Option<Uuid>,
+    translator_account_uuid: Option<Uuid>,
 
     sort: Option<String>,
     order: Option<Order>,

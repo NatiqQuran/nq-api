@@ -8,7 +8,6 @@ CREATE TABLE quran_translations (
     release_date DATE,
     source VARCHAR(300),
     approved BOOLEAN DEFAULT FALSE NOT NULL,
-    bismillah TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT translation_fk_user_id_rel FOREIGN KEY(creator_user_id) REFERENCES app_users(id),

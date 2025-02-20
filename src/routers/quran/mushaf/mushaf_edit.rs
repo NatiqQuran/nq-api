@@ -13,7 +13,7 @@ pub async fn mushaf_edit(
     pool: web::Data<DbPool>,
 ) -> Result<&'static str, RouterError> {
     use crate::schema::quran_mushafs::dsl::{
-        bismillah_text, quran_mushafs, name as mushaf_name, short_name as mushaf_short_name,
+        name as mushaf_name, quran_mushafs, short_name as mushaf_short_name,
         source as mushaf_source, uuid as mushaf_uuid,
     };
 
@@ -28,7 +28,6 @@ pub async fn mushaf_edit(
                 mushaf_name.eq(new_mushaf.name),
                 mushaf_short_name.eq(new_mushaf.short_name),
                 mushaf_source.eq(new_mushaf.source),
-                bismillah_text.eq(new_mushaf.bismillah_text),
             ))
             .execute(&mut conn)?;
 

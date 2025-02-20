@@ -3,7 +3,7 @@
 [![Docker Image CI](https://github.com/NatiqQuran/nq-api/actions/workflows/docker-image.yml/badge.svg)](https://github.com/NatiqQuran/nq-api/actions/workflows/docker-image.yml)
 [![Rust](https://github.com/NatiqQuran/nq-api/actions/workflows/rust.yml/badge.svg)](https://github.com/NatiqQuran/nq-api/actions/workflows/rust.yml)
 
-Natiq Quran open API
+Natiq Quran open API \
 
 # Docker
 
@@ -25,4 +25,4 @@ cargo build --release
 ./target/release/nq-api
 ```
 
-Api will listen to 0.0.0.0:8080
+API will listen to 0.0.0.0:8080

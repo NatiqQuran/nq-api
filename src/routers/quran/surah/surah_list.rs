@@ -1,9 +1,9 @@
+use super::SurahName;
 use super::{SurahListQuery, SurahListResponse};
 use crate::error::RouterErrorDetailBuilder;
 use crate::filter::Filter;
 use crate::models::{QuranAyah, QuranMushaf, QuranSurah};
 use crate::schema::quran_ayahs::surah_id;
-use crate::SurahName;
 use crate::{error::RouterError, DbPool};
 use actix_web::{web, HttpRequest};
 use diesel::dsl::count;
@@ -81,6 +81,12 @@ pub async fn surah_list(
                     None
                 };
 
+                let surah_search_terms = surah.search_terms.map(|st| {
+                    st.into_iter()
+                        .map(|s| s.unwrap_or(String::new()))
+                        .collect::<Vec<String>>()
+                });
+
                 SurahListResponse {
                     uuid: surah.uuid,
                     names: vec![SurahName {
@@ -93,6 +99,7 @@ pub async fn surah_list(
                     number: surah.number,
                     period: surah.period,
                     number_of_ayahs,
+                    search_terms: surah_search_terms,
                 }
             })
             .collect::<Vec<SurahListResponse>>();

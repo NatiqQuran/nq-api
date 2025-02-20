@@ -5,7 +5,6 @@ CREATE TABLE quran_mushafs (
     short_name VARCHAR(200),
     name VARCHAR(400),
     source VARCHAR(300),
-    bismillah_text TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT mushaf_fk_user_id_rel FOREIGN KEY(creator_user_id) REFERENCES app_users(id),

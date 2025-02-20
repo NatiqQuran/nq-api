@@ -33,9 +33,9 @@ pub async fn translation_view(
         uuid as surah_table_uuid,
     };
     use crate::schema::quran_translations::dsl::{quran_translations, uuid as translation_uuid};
-    use crate::schema::quran_translations_text::dsl::{
-        quran_translations_text, text as translation_text, translation_id,
-        uuid as translation_text_uuid,
+    use crate::schema::quran_translations_ayahs::dsl::{
+        bismillah as translation_ayah_bismillah, quran_translations_ayahs,
+        text as translation_ayah, translation_id, uuid as translation_ayah_uuid,
     };
 
     let path = path.into_inner();
@@ -66,7 +66,7 @@ pub async fn translation_view(
             .get_result::<(Uuid, String, Option<String>, Option<String>)>(&mut conn)?;
 
         let mut ayahs = quran_surahs
-            .inner_join(quran_ayahs.left_outer_join(quran_translations_text))
+            .inner_join(quran_ayahs.left_outer_join(quran_translations_ayahs))
             .internal_into_boxed();
 
         if let Some(uuid) = query.surah_uuid {
@@ -82,18 +82,21 @@ pub async fn translation_view(
             )
             .order(ayah_number.asc())
             .select((
-                translation_text.nullable(),
+                translation_ayah.nullable(),
                 ayah_uuid,
                 ayah_number,
                 surah_number,
-                translation_text_uuid.nullable(),
+                translation_ayah_uuid.nullable(),
+                translation_ayah_bismillah.nullable(),
             ))
-            .get_results::<(Option<String>, Uuid, i32, i32, Option<Uuid>)>(&mut conn)?;
+            .get_results::<(Option<String>, Uuid, i32, i32, Option<Uuid>, Option<String>)>(
+                &mut conn,
+            )?;
 
         let mut result_ayahs = vec![];
         let mut status = TranslationStatus::Ok;
 
-        for (text, a_uuid, a_number, s_number, text_uuid) in result {
+        for (text, a_uuid, a_number, s_number, text_uuid, bismillah) in result {
             if text_uuid.is_none() {
                 status = TranslationStatus::Incomplete;
             }
@@ -103,6 +106,7 @@ pub async fn translation_view(
                 surah_number: s_number as u32,
                 number: a_number as u32,
                 text_uuid,
+                bismillah,
             });
         }
 
@@ -123,7 +127,6 @@ pub async fn translation_view(
                 first_name: translator.2,
                 last_name: translator.3,
             },
-            bismillah: translation.bismillah,
         }))
     })
     .await

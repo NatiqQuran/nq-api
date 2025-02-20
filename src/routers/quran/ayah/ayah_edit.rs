@@ -1,5 +1,5 @@
 use crate::error::RouterError;
-use crate::DbPool;
+use crate::{AyahBismillah, DbPool};
 use actix_web::web;
 use diesel::prelude::*;
 use uuid::Uuid;
@@ -13,7 +13,8 @@ pub async fn ayah_edit(
     pool: web::Data<DbPool>,
 ) -> Result<&'static str, RouterError> {
     use crate::schema::quran_ayahs::dsl::{
-        ayah_number, quran_ayahs, sajdah as ayah_sajdah, uuid as ayah_uuid,
+        ayah_number, bismillah_text, is_bismillah, quran_ayahs, sajdah as ayah_sajdah,
+        uuid as ayah_uuid,
     };
 
     let new_ayah = new_ayah.into_inner();
@@ -28,6 +29,21 @@ pub async fn ayah_edit(
             .set((
                 ayah_number.eq(new_ayah.ayah_number),
                 ayah_sajdah.eq(new_sajdah),
+                is_bismillah.eq(new_ayah
+                    .bismillah
+                    .clone()
+                    .unwrap_or(AyahBismillah {
+                        is_ayah: false,
+                        text: None,
+                    })
+                    .is_ayah),
+                bismillah_text.eq(new_ayah
+                    .bismillah
+                    .unwrap_or(AyahBismillah {
+                        is_ayah: false,
+                        text: None,
+                    })
+                    .text),
             ))
             .execute(&mut conn)?;
 

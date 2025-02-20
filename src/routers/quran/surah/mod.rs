@@ -13,6 +13,8 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::word::WordBreaker;
+
 /// The quran text format Each word has its own uuid
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -27,47 +29,54 @@ impl Default for Format {
     }
 }
 
-// This is for Surah router
-// which is faster than SimpleAyah in sorting
-#[derive(Eq, Serialize, Clone, Debug)]
-pub struct SimpleAyahSurah {
+#[derive(Hash, Ord, PartialOrd, PartialEq, Eq, Serialize, Clone, Debug, Deserialize)]
+pub struct AyahBismillah {
+    pub is_ayah: bool,
+    pub text: Option<String>,
+}
+
+impl AyahBismillah {
+    pub fn from_ayah_fields(is_bismillah: bool, bismillah_text: Option<String>) -> Option<Self> {
+        match (is_bismillah, bismillah_text) {
+            (true, None) => Some(Self {
+                is_ayah: true,
+                text: None,
+            }),
+            (false, Some(text)) => Some(Self {
+                is_ayah: false,
+                text: Some(text),
+            }),
+            (false, None) => None,
+            (_, _) => None,
+        }
+    }
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct AyahBismillahInSurah {
+    pub is_first_ayah: bool,
+    pub text: String,
+}
+
+#[derive(Hash, Ord, PartialOrd, PartialEq, Eq, Serialize, Clone, Debug)]
+pub struct Breaker {
+    pub name: String,
     pub number: u32,
-    pub uuid: Uuid,
-    pub sajdah: Option<String>,
-}
-
-// WARNING: Only hashing 'number' ?
-// This can lead to collisions in hashmap if the number is not unique
-impl Hash for SimpleAyahSurah {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.number.hash(state);
-    }
-}
-
-impl Ord for SimpleAyahSurah {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.number.cmp(&other.number)
-    }
-}
-
-impl PartialEq for SimpleAyahSurah {
-    fn eq(&self, other: &Self) -> bool {
-        self.number == other.number
-    }
-}
-
-impl PartialOrd for SimpleAyahSurah {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.number.cmp(&other.number))
-    }
 }
 
 /// The Ayah type that will return in the response
 #[derive(Hash, Ord, PartialOrd, PartialEq, Eq, Serialize, Clone, Debug)]
 pub struct SimpleAyah {
-    pub number: u32,
+    #[serde(skip_serializing)]
+    pub id: u32,
     pub uuid: Uuid,
+    pub number: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sajdah: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bismillah: Option<AyahBismillah>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub breakers: Option<Vec<Breaker>>,
 }
 
 /// it contains ayah info and the content
@@ -79,10 +88,18 @@ pub struct AyahWithText {
 }
 
 #[derive(Serialize, Clone, Debug)]
+pub struct AyahWord {
+    pub word: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub breakers: Option<Vec<WordBreaker>>,
+}
+
+#[derive(Serialize, Clone, Debug)]
 pub struct AyahWithWords {
     #[serde(flatten)]
     pub ayah: SimpleAyah,
-    pub words: Vec<String>,
+    pub words: Vec<AyahWord>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -90,6 +107,45 @@ pub struct AyahWithWords {
 pub enum AyahTy {
     Text(AyahWithText),
     Words(AyahWithWords),
+}
+
+impl AyahTy {
+    pub fn format_bismillah_for_surah(&self) -> Option<AyahBismillahInSurah> {
+        match self {
+            AyahTy::Text(at) => at.ayah.bismillah.clone().map(|bismillah| {
+                if bismillah.is_ayah {
+                    AyahBismillahInSurah {
+                        is_first_ayah: true,
+                        text: at.text.clone(),
+                    }
+                } else {
+                    AyahBismillahInSurah {
+                        is_first_ayah: false,
+                        text: bismillah.text.unwrap_or(String::new()),
+                    }
+                }
+            }),
+            AyahTy::Words(at) => at.ayah.bismillah.clone().map(|bismillah| {
+                if bismillah.is_ayah {
+                    AyahBismillahInSurah {
+                        is_first_ayah: true,
+                        text: at
+                            .words
+                            .clone()
+                            .into_iter()
+                            .map(|w| w.word)
+                            .collect::<Vec<String>>()
+                            .join(" "),
+                    }
+                } else {
+                    AyahBismillahInSurah {
+                        is_first_ayah: false,
+                        text: bismillah.text.unwrap_or(String::new()),
+                    }
+                }
+            }),
+        }
+    }
 }
 
 /// The final response body
@@ -172,15 +228,13 @@ impl From<QuranMushaf> for SingleSurahMushaf {
 /// The response type for /surah/{id}
 #[derive(Serialize, Clone, Debug)]
 pub struct SingleSurahResponse {
-    pub uuid: Uuid,
     pub mushaf: SingleSurahMushaf,
+    pub number: u32,
+    pub number_of_ayahs: u32,
     pub names: Vec<SurahName>,
     pub period: Option<String>,
-    pub number: i32,
-    pub bismillah_status: bool,
-    pub bismillah_as_first_ayah: bool,
-    pub bismillah_text: Option<String>,
-    pub number_of_ayahs: i64,
+    pub bismillah: Option<AyahBismillahInSurah>,
+    pub search_terms: Option<Vec<String>>,
 }
 
 /// The response type for /surah
@@ -191,6 +245,7 @@ pub struct SurahListResponse {
     pub period: Option<String>,
     pub number_of_ayahs: i64,
     pub names: Vec<SurahName>,
+    pub search_terms: Option<Vec<String>>,
 }
 
 // TODO: Remove number. number must be generated at api runtime
@@ -202,8 +257,7 @@ pub struct SimpleSurah {
     pub name_translation_phrase: Option<String>,
     pub name_transliteration: Option<String>,
     pub period: Option<String>,
+    pub search_terms: Option<Vec<String>>,
     pub number: i32,
-    pub bismillah_status: bool,
-    pub bismillah_as_first_ayah: bool,
     pub mushaf_uuid: Uuid,
 }

@@ -11,7 +11,7 @@ pub async fn translation_edit(
     pool: web::Data<DbPool>,
 ) -> Result<&'static str, RouterError> {
     use crate::schema::quran_translations::dsl::{
-        bismillah as translation_bismillah, language as translation_language, quran_translations,
+        language as translation_language, quran_translations,
         release_date as translation_release_date, source as translation_source,
         uuid as translation_uuid,
     };
@@ -27,7 +27,6 @@ pub async fn translation_edit(
                 translation_source.eq(new_translation.source),
                 translation_release_date.eq(new_translation.release_date),
                 translation_language.eq(new_translation.language),
-                translation_bismillah.eq(new_translation.bismillah),
             ))
             .execute(&mut conn)?;
 

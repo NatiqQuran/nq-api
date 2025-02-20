@@ -31,7 +31,6 @@ pub async fn mushaf_add(
             creator_user_id: user,
             name: Some(&new_mushaf.name),
             source: Some(&new_mushaf.source),
-            bismillah_text: new_mushaf.bismillah_text,
         }
         .insert_into(quran_mushafs)
         .execute(&mut conn)?;

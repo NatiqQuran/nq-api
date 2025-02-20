@@ -231,6 +231,11 @@ pub struct NewEmployee {
     Associations,
     Clone,
     Debug,
+    Eq,
+    Ord,
+    PartialOrd,
+    Hash,
+    PartialEq,
 )]
 #[diesel(belongs_to(QuranSurah, foreign_key = surah_id))]
 #[diesel(table_name = quran_ayahs)]
@@ -246,6 +251,8 @@ pub struct QuranAyah {
 
     pub ayah_number: i32,
     pub sajdah: Option<String>,
+    pub is_bismillah: bool,
+    pub bismillah_text: Option<String>,
 
     #[serde(skip_serializing)]
     pub created_at: NaiveDateTime,
@@ -260,9 +267,24 @@ pub struct NewQuranAyah {
     pub surah_id: i32,
     pub ayah_number: i32,
     pub sajdah: Option<String>,
+    pub is_bismillah: bool,
+    pub bismillah_text: Option<String>,
 }
 
-#[derive(Clone, Selectable, Identifiable, Associations, Queryable, PartialEq, Debug, Serialize)]
+#[derive(
+    Clone,
+    Selectable,
+    Identifiable,
+    Associations,
+    Queryable,
+    PartialEq,
+    Debug,
+    Serialize,
+    Hash,
+    Ord,
+    PartialOrd,
+    Eq,
+)]
 #[diesel(belongs_to(QuranAyah, foreign_key = ayah_id))]
 #[diesel(table_name = quran_words)]
 pub struct QuranWord {
@@ -303,14 +325,14 @@ pub struct QuranSurah {
     pub name: String,
     pub period: Option<String>,
     pub number: i32,
-    pub bismillah_status: bool,
-    pub bismillah_as_first_ayah: bool,
     pub mushaf_id: i32,
 
     pub name_pronunciation: Option<String>,
     pub name_translation_phrase: Option<String>,
 
     pub name_transliteration: Option<String>,
+
+    pub search_terms: Option<Vec<Option<String>>>,
 
     #[serde(skip_serializing)]
     pub created_at: NaiveDateTime,
@@ -325,12 +347,11 @@ pub struct NewQuranSurah {
     pub name: String,
     pub period: Option<String>,
     pub number: i32,
-    pub bismillah_status: bool,
-    pub bismillah_as_first_ayah: bool,
     pub mushaf_id: i32,
     pub name_pronunciation: Option<String>,
     pub name_translation_phrase: Option<String>,
     pub name_transliteration: Option<String>,
+    pub search_terms: Option<Vec<Option<String>>>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Validate, Identifiable, Queryable, Selectable, Debug)]
@@ -346,8 +367,6 @@ pub struct QuranMushaf {
     pub name: Option<String>,
     pub source: Option<String>,
 
-    pub bismillah_text: Option<String>,
-
     #[serde(skip_serializing)]
     pub created_at: NaiveDateTime,
     #[serde(skip_serializing)]
@@ -361,7 +380,6 @@ pub struct NewQuranMushaf<'a> {
     pub short_name: Option<&'a str>,
     pub name: Option<&'a str>,
     pub source: Option<&'a str>,
-    pub bismillah_text: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Validate, Identifiable, Queryable, Debug, Selectable)]
@@ -468,10 +486,6 @@ pub struct Translation {
     /// translation content status
     pub approved: bool,
 
-    /// Translated Bissmillah
-    #[serde(skip_serializing)]
-    pub bismillah: String,
-
     #[serde(skip_serializing)]
     pub created_at: NaiveDateTime,
     #[serde(skip_serializing)]
@@ -501,10 +515,10 @@ pub struct NewTranslation {
     Selectable,
     QueryableByName,
 )]
-#[diesel(table_name = quran_translations_text)]
+#[diesel(table_name = quran_translations_ayahs)]
 #[diesel(belongs_to(Translation))]
 #[diesel(belongs_to(QuranAyah, foreign_key = ayah_id))]
-pub struct TranslationText {
+pub struct TranslationAyah {
     #[serde(skip_serializing)]
     pub id: i32,
     pub uuid: Uuid,
@@ -520,6 +534,10 @@ pub struct TranslationText {
 
     pub text: String,
 
+    /// Translated Bissmillah
+    #[serde(skip_serializing)]
+    pub bismillah: Option<String>,
+
     #[serde(skip_serializing)]
     pub created_at: NaiveDateTime,
     #[serde(skip_serializing)]
@@ -527,12 +545,13 @@ pub struct TranslationText {
 }
 
 #[derive(Insertable)]
-#[diesel(table_name = quran_translations_text)]
-pub struct NewTranslationText<'a> {
+#[diesel(table_name = quran_translations_ayahs)]
+pub struct NewTranslationAyah<'a> {
     pub creator_user_id: i32,
     pub translation_id: i32,
     pub ayah_id: i32,
     pub text: &'a String,
+    pub bismillah: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Validate, Identifiable, Queryable, Debug, Selectable)]
@@ -638,4 +657,80 @@ pub struct NewPhraseTranslation<'a> {
     pub phrase_id: i32,
     pub text: &'a str,
     pub language: &'a str,
+}
+
+#[derive(
+    Deserialize,
+    Serialize,
+    Clone,
+    Validate,
+    Identifiable,
+    Queryable,
+    Debug,
+    Associations,
+    Selectable,
+    Eq,
+    Hash,
+    PartialEq,
+)]
+#[diesel(table_name = quran_ayahs_breakers)]
+#[diesel(belongs_to(QuranAyah, foreign_key = ayah_id))]
+pub struct QuranAyahBreaker {
+    #[serde(skip_serializing)]
+    id: i32,
+    uuid: Uuid,
+
+    #[serde(skip_serializing)]
+    creator_user_id: i32,
+
+    #[serde(skip_serializing)]
+    pub ayah_id: i32,
+
+    #[serde(skip_serializing)]
+    owner_account_id: Option<i32>,
+
+    pub name: String,
+
+    #[serde(skip_serializing)]
+    pub created_at: NaiveDateTime,
+    #[serde(skip_serializing)]
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(
+    Deserialize,
+    Serialize,
+    Clone,
+    Validate,
+    Identifiable,
+    Queryable,
+    Debug,
+    Associations,
+    Selectable,
+    PartialEq,
+    Eq,
+    Hash,
+)]
+#[diesel(table_name = quran_words_breakers)]
+#[diesel(belongs_to(QuranWord, foreign_key = word_id))]
+pub struct QuranWordBreaker {
+    #[serde(skip_serializing)]
+    id: i32,
+    uuid: Uuid,
+
+    #[serde(skip_serializing)]
+    creator_user_id: i32,
+
+    #[serde(skip_serializing)]
+    pub word_id: i32,
+
+    #[serde(skip_serializing)]
+    owner_account_id: Option<i32>,
+
+    pub name: String,
+
+    #[serde(skip_serializing)]
+    pub created_at: NaiveDateTime,
+    #[serde(skip_serializing)]
+    pub updated_at: NaiveDateTime,
 }

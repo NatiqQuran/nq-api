@@ -5,6 +5,8 @@ CREATE TABLE quran_ayahs (
     surah_id serial NOT NULL,
     ayah_number serial NOT NULL,
     sajdah VARCHAR(20),
+    is_bismillah BOOLEAN NOT NULL,
+    bismillah_text TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT quran_ayahs_id PRIMARY KEY (id),

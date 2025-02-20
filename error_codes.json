@@ -1,86 +1,90 @@
 {
-    "INTERNAL_ERROR": {
-        "status_code": 500,
-        "message": "Internal Error!"
-    },
-    "NOT_FOUND": {
-        "status_code": 404,
-        "message": "Not found!"
-    },
-    "ACTION_NOT_FOUND": {
-        "status_code": 404,
-        "message": "Not found!"
-    },
-    "SEND_CODE_INTERNAL_ERROR": {
-        "status_code": 500,
-        "message": "Internal error when sending verification code!"
-    },
-    "VERIFY_CODE_NOT_SENDED": {
-        "status_code": 410,
-        "message": "No verification code is sended to this email!"
-    },
-    "VERIFY_CODE_NOT_VALID": {
-        "status_code": 400,
-        "message": "Verification code is not valid!"
-    },
-    "VERIFY_CODE_ALREADY_USED": {
-        "status_code": 410,
-        "message": "Verification code is already used!"
-    },
-    "VERIFY_CODE_EXPIRED": {
-        "status_code": 410,
-        "message": "Verification code is expired!"
-    },
-    "CANT_GENERATE_TOKEN": {
-        "status_code": 500,
-        "message": "Can't generate token!"
-    },
-    "ORGANIZATION_NAME_NOT_AVAILABLE": {
-        "status_code": 404,
-        "message": "Organization name is already in use by another account!"
-    },
-    "PERMISSION_CONDITION_VALUE_NOT_VALID": {
-        "status_code": 400,
-        "message": "Permission condition value is not valid!"
-    },
-    "AUTHZ_CONDITION_VALUE_NOT_DEFINED": {
-        "status_code": 404,
-        "message": "Authz condition value is not defined!"
-    },
-    "MODEL_ATTRIBUTE_NOT_DEFINED": {
-        "status_code": 404,
-        "message": "Model attribute value is not defined!"
-    },
-    "VALIDATION_ERROR": {
-        "status_code": 400,
-        "message": "Request data is not valid"
-    },
-    "FILTER_SORT_VALUE_NOT_DEFINED": {
-        "status_code": 404,
-        "message": "Filter sort value is not defined!"
-    },
-    "AUTHN_TOKEN_NOT_FOUND": {
-        "status_code": 401,
-        "message": "Token required!"
-    },
-    "AUTHN_TOKEN_INVALID": {
-        "status_code": 401,
-        "message": "Token invalid!"
-    },
-    "AUTHZ_PERMISSION_DENIED": {
-        "status_code": 403,
-        "message": "Permission denied!"
-    },
-    "UUID_ERROR": {
-        "status_code": 400,
-        "message": "Invalid UUID!"
-    },
-    "PHRASE_NOT_FOUND": {
-        "status_code": 404,
-        "message": "Phrase not found!"
-    },
-    "BAD_PATH": {
-        "status_code": 400,
-        "message": "Path format is not correct!"
-    }
+  "INTERNAL_ERROR": {
+    "status_code": 500,
+    "message": "Internal Error!"
+  },
+  "NOT_FOUND": {
+    "status_code": 404,
+    "message": "Not found!"
+  },
+  "ACTION_NOT_FOUND": {
+    "status_code": 404,
+    "message": "Not found!"
+  },
+  "SEND_CODE_INTERNAL_ERROR": {
+    "status_code": 500,
+    "message": "Internal error when sending verification code!"
+  },
+  "VERIFY_CODE_NOT_SENDED": {
+    "status_code": 410,
+    "message": "No verification code is sended to this email!"
+  },
+  "VERIFY_CODE_NOT_VALID": {
+    "status_code": 400,
+    "message": "Verification code is not valid!"
+  },
+  "VERIFY_CODE_ALREADY_USED": {
+    "status_code": 410,
+    "message": "Verification code is already used!"
+  },
+  "VERIFY_CODE_EXPIRED": {
+    "status_code": 410,
+    "message": "Verification code is expired!"
+  },
+  "CANT_GENERATE_TOKEN": {
+    "status_code": 500,
+    "message": "Can't generate token!"
+  },
+  "ORGANIZATION_NAME_NOT_AVAILABLE": {
+    "status_code": 404,
+    "message": "Organization name is already in use by another account!"
+  },
+  "PERMISSION_CONDITION_VALUE_NOT_VALID": {
+    "status_code": 400,
+    "message": "Permission condition value is not valid!"
+  },
+  "AUTHZ_CONDITION_VALUE_NOT_DEFINED": {
+    "status_code": 404,
+    "message": "Authz condition value is not defined!"
+  },
+  "MODEL_ATTRIBUTE_NOT_DEFINED": {
+    "status_code": 404,
+    "message": "Model attribute value is not defined!"
+  },
+  "VALIDATION_ERROR": {
+    "status_code": 400,
+    "message": "Request data is not valid"
+  },
+  "FILTER_SORT_VALUE_NOT_DEFINED": {
+    "status_code": 404,
+    "message": "Filter sort value is not defined!"
+  },
+  "AUTHN_TOKEN_NOT_FOUND": {
+    "status_code": 401,
+    "message": "Token required!"
+  },
+  "AUTHN_TOKEN_INVALID": {
+    "status_code": 401,
+    "message": "Token invalid!"
+  },
+  "AUTHZ_PERMISSION_DENIED": {
+    "status_code": 403,
+    "message": "Permission denied!"
+  },
+  "UUID_ERROR": {
+    "status_code": 400,
+    "message": "Invalid UUID!"
+  },
+  "PHRASE_NOT_FOUND": {
+    "status_code": 404,
+    "message": "Phrase not found!"
+  },
+  "BAD_PATH": {
+    "status_code": 400,
+    "message": "Path format is not correct!"
+  },
+  "NO_BISMILLAH": {
+    "status_code": 400,
+    "message": "Doesn't have bismillah!"
+  }
 }

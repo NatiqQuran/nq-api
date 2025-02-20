@@ -59,6 +59,7 @@ pub type DbPool = Pool<ConnectionManager<PgConnection>>;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
+/// Predefined NQ-api errors that is loadeded from (static) file has life time of static.
 pub static FIXED_ERROR_RESPONSES: OnceLock<PreDefinedResponseErrors> = OnceLock::new();
 pub const FIXED_ERROR_JSON: &str = include_str!("../error_codes.json");
 
@@ -204,19 +205,24 @@ async fn main() -> std::io::Result<()> {
                             .route(web::delete().to(translation_delete::translation_delete)),
                     )
                     .service(
-                        web::scope("/text").service(
-                            web::resource("/{translation_uuid}")
-                                .wrap(TokenAuth::new(user_id_from_token.clone(), false))
-                                .route(web::get().to(translation_text_view::translation_text_view))
-                                .route(
-                                    web::post()
-                                        .to(translation_text_modify::translation_text_modify),
-                                )
-                                .route(
-                                    web::delete()
-                                        .to(translation_text_delete::translation_text_delete),
-                                ),
-                        ),
+                        web::scope("/text")
+                            .route(
+                                "/{translation_uuid}",
+                                web::get().to(translation_ayah_view::translation_ayah_view),
+                            )
+                            .service(
+                                web::resource("/{translation_uuid}")
+                                    .wrap(AuthZ::new(auth_z_controller.clone()))
+                                    .wrap(TokenAuth::new(user_id_from_token.clone(), true))
+                                    .route(
+                                        web::post()
+                                            .to(translation_ayah_modify::translation_ayah_modify),
+                                    )
+                                    .route(
+                                        web::delete()
+                                            .to(translation_ayah_delete::translation_ayah_delete),
+                                    ),
+                            ),
                     ),
             )
             .service(

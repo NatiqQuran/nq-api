@@ -14,7 +14,7 @@ use std::hash::Hash;
 /// finds the relatives in the vector
 /// Vec<(Obj1, Obj2)>
 /// This will collect the Obj2 that related to the Obj1 and returns
-/// a BTreeMap (We want the elements be in order)
+/// a BTreeMap (We want the elements to be in order)
 pub fn multip<T, U, F, NT>(vector: Vec<(T, U)>, insert_data_type: F) -> BTreeMap<NT, Vec<U>>
 where
     T: Sized + Clone,

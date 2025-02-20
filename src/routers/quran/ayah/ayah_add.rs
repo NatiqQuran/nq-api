@@ -15,6 +15,8 @@ pub struct AyahWithText {
     pub surah_uuid: String,
     pub sajdah: Option<Sajdah>,
     pub text: String,
+    pub is_bismillah: bool,
+    pub bismillah_text: Option<String>,
 }
 
 /// Add's a new ayah
@@ -59,6 +61,8 @@ pub async fn ayah_add(
             sajdah: new_ayah.sajdah.map(|sajdah| sajdah.to_string()),
             ayah_number: (latest_ayah_number + 1) as i32,
             creator_user_id: user,
+            is_bismillah: new_ayah.is_bismillah,
+            bismillah_text: new_ayah.bismillah_text,
         }
         .insert_into(quran_ayahs)
         .get_result(&mut conn)?;

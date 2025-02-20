@@ -29,9 +29,6 @@ pub struct TranslationItem {
     /// translation content status
     pub approved: bool,
 
-    /// Translated Bissmillah
-    pub bismillah: String,
-
     pub translator: TranslatorData,
 }
 
@@ -77,7 +74,7 @@ pub async fn translation_list(
             translations_list = translations_list.filter(translation_lang.eq(lang));
         }
 
-        let translations_list = if let Some(translator_uuid) = query.translator_account {
+        let translations_list = if let Some(translator_uuid) = query.translator_account_uuid {
             translations_list
                 .inner_join(app_accounts.left_join(app_user_names))
                 .filter(translation_mushaf_id.eq(mushafid))
@@ -95,7 +92,6 @@ pub async fn translation_list(
                 .map(
                     |(t, a_u, username, first_name, last_name)| TranslationItem {
                         uuid: t.uuid,
-                        bismillah: t.bismillah,
                         source: t.source,
                         language: t.language,
                         approved: t.approved,
@@ -126,7 +122,6 @@ pub async fn translation_list(
                 .map(
                     |(t, a_u, username, first_name, last_name)| TranslationItem {
                         uuid: t.uuid,
-                        bismillah: t.bismillah,
                         source: t.source,
                         language: t.language,
                         approved: t.approved,

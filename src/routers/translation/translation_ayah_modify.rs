@@ -1,18 +1,18 @@
-use crate::translation_text_view::TextViewQuery;
-use crate::{error::RouterError, models::NewTranslationText, DbPool};
+use crate::translation_ayah_view::TextViewQuery;
+use crate::{error::RouterError, models::NewTranslationAyah, DbPool};
 use actix_web::web;
 use diesel::select;
 use diesel::{dsl::exists, prelude::*};
 use uuid::Uuid;
 
-use super::SimpleTranslationText;
+use super::SimpleTranslationAyah;
 
 /// Modify translation text,
 ///
 /// If the translation to an ayah exists updated it,
 /// otherwise add.
-pub async fn translation_text_modify(
-    new_translation_text: web::Json<SimpleTranslationText>,
+pub async fn translation_ayah_modify(
+    new_translation_ayah: web::Json<SimpleTranslationAyah>,
     pool: web::Data<DbPool>,
     data: web::ReqData<u32>,
     // translatio uuid
@@ -20,16 +20,18 @@ pub async fn translation_text_modify(
     query: web::Query<TextViewQuery>,
 ) -> Result<&'static str, RouterError> {
     use crate::schema::app_users::dsl::{account_id as user_acc_id, app_users, id as user_id};
-    use crate::schema::quran_ayahs::dsl::{id as ayah_id, quran_ayahs, uuid as ayah_uuid};
+    use crate::schema::quran_ayahs::dsl::{
+        bismillah_text, id as ayah_id, quran_ayahs, uuid as ayah_uuid,
+    };
     use crate::schema::quran_translations::dsl::{
         id as translation_id, quran_translations, uuid as translation_uuid,
     };
-    use crate::schema::quran_translations_text::dsl::{
-        ayah_id as text_ayah_id, quran_translations_text, text as text_content,
-        translation_id as text_translation_id,
+    use crate::schema::quran_translations_ayahs::dsl::{
+        ayah_id as text_ayah_id, bismillah as translation_ayah_bismillah, quran_translations_ayahs,
+        text as text_content, translation_id as text_translation_id,
     };
 
-    let new_translation_text = new_translation_text.into_inner();
+    let new_translation_ayah = new_translation_ayah.into_inner();
     let path = path.into_inner();
     let creator_id = data.into_inner();
     let query = query.into_inner();
@@ -44,26 +46,33 @@ pub async fn translation_text_modify(
             .get_result(&mut conn)?;
 
         // Get the translation text ayah id
-        let ayah: i32 = quran_ayahs
+        let (a_id, a_bismillah_text): (i32, Option<String>) = quran_ayahs
             .filter(ayah_uuid.eq(query.ayah_uuid))
-            .select(ayah_id)
+            .select((ayah_id, bismillah_text))
             .get_result(&mut conn)?;
 
-        // Now check if the translation_text exists
+        if a_bismillah_text.is_none() && new_translation_ayah.bismillah.is_some() {
+            return Err(RouterError::from_predefined("NO_BISMILLAH"));
+        }
+
+        // Now check if the translation_ayah exists
         let text: bool = select(exists(
-            quran_translations_text
-                .filter(text_ayah_id.eq(ayah))
+            quran_translations_ayahs
+                .filter(text_ayah_id.eq(a_id))
                 .filter(text_translation_id.eq(translation)),
         ))
         .get_result(&mut conn)?;
 
         // TODO: use (on conflict do update)
         if text {
-            // This means the translation_text exists, we just need to update it
-            diesel::update(quran_translations_text)
-                .filter(text_ayah_id.eq(ayah))
+            // This means the translation_ayah exists, we just need to update it
+            diesel::update(quran_translations_ayahs)
+                .filter(text_ayah_id.eq(a_id))
                 .filter(text_translation_id.eq(translation))
-                .set((text_content.eq(new_translation_text.text),))
+                .set((
+                    text_content.eq(new_translation_ayah.text),
+                    translation_ayah_bismillah.eq(new_translation_ayah.bismillah),
+                ))
                 .execute(&mut conn)?;
 
             Ok("Updated")
@@ -74,14 +83,15 @@ pub async fn translation_text_modify(
                 .select(user_id)
                 .get_result(&mut conn)?;
 
-            // This means user wants to add a new translation_text
-            NewTranslationText {
+            // This means user wants to add a new translation_ayah
+            NewTranslationAyah {
                 creator_user_id: user,
-                text: &new_translation_text.text,
+                text: &new_translation_ayah.text,
                 translation_id: translation,
-                ayah_id: ayah,
+                ayah_id: a_id,
+                bismillah: new_translation_ayah.bismillah,
             }
-            .insert_into(quran_translations_text)
+            .insert_into(quran_translations_ayahs)
             .execute(&mut conn)?;
 
             Ok("Added")
