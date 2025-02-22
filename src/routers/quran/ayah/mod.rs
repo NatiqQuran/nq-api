@@ -76,6 +76,7 @@ pub struct SimpleAyah {
 pub struct AyahListQuery {
     mushaf: String,
     format: Option<Format>,
+    surah_uuid: Option<Uuid>,
 
     sort: Option<String>,
     order: Option<Order>,

@@ -44,7 +44,7 @@ pub async fn ayah_view(
 
         // Get the mushaf
         let mushaf = quran_mushafs
-            .filter(mushaf_id.eq(surah.id))
+            .filter(mushaf_id.eq(surah.mushaf_id))
             .get_result::<QuranMushaf>(&mut conn)?;
 
         let translation = if let Some(ref phrase) = surah.name_translation_phrase {

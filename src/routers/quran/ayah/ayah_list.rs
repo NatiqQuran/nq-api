@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use super::AyahListQuery;
 use crate::error::{RouterError, RouterErrorDetailBuilder};
 use crate::filter::Filter;
 use crate::models::{QuranAyah, QuranAyahBreaker, QuranWord, QuranWordBreaker};
@@ -13,8 +14,6 @@ use crate::{AyahBismillah, Breaker};
 use actix_web::{web, HttpRequest};
 use diesel::prelude::*;
 
-use super::AyahListQuery;
-
 /// Returns the list of ayahs
 pub async fn ayah_list(
     pool: web::Data<DbPool>,
@@ -24,7 +23,9 @@ pub async fn ayah_list(
     use crate::schema::quran_ayahs::dsl::ayah_number;
     use crate::schema::quran_ayahs_breakers::dsl::quran_ayahs_breakers;
     use crate::schema::quran_mushafs::dsl::{quran_mushafs, short_name as mushaf_short_name};
-    use crate::schema::quran_surahs::dsl::{number as quran_surah_number, quran_surahs};
+    use crate::schema::quran_surahs::dsl::{
+        number as quran_surah_number, quran_surahs, uuid as surahs_uuid,
+    };
     use crate::schema::quran_words::dsl::quran_words;
     use crate::schema::quran_words_breakers::dsl::quran_words_breakers;
 
@@ -86,14 +87,18 @@ pub async fn ayah_list(
             Err(err) => return Err(err.log_to_db(pool, error_detail)),
         };
 
-        let ayahs_words = filtered_ayahs
+        let mut ayahs_words = filtered_ayahs
             .left_outer_join(quran_surahs.left_outer_join(quran_mushafs))
-            // TODO: currently we dont use quran_words_breakers join
-            .inner_join(quran_words.left_join(quran_words_breakers))
+            .inner_join(quran_words)
             .filter(mushaf_short_name.eq(query.mushaf))
             .order((quran_surah_number.asc(), ayah_number.asc()))
-            .select((QuranAyah::as_select(), QuranWord::as_select()))
-            .get_results::<(QuranAyah, QuranWord)>(&mut conn)?;
+            .select((QuranAyah::as_select(), QuranWord::as_select()));
+
+        if let Some(surah_uuid) = query.surah_uuid {
+            ayahs_words = ayahs_words.filter(surahs_uuid.eq(surah_uuid));
+        }
+
+        let ayahs_words = ayahs_words.get_results(&mut conn)?;
 
         let ayahs_words = ayahs_words
             .into_iter()
