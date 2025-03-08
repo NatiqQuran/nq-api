@@ -1,6 +1,6 @@
 from django.contrib import admin
 from rest_framework import routers
-from quran import views
+from account import views
 from django.urls import path, include
 
 router = routers.DefaultRouter()
