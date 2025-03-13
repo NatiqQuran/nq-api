@@ -5,4 +5,7 @@ from quran.serializers import MushafSerializer
 class MushafViewSet(viewsets.ModelViewSet):
     queryset = Mushaf.objects.all().order_by('short_name')
     serializer_class = MushafSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.DjangoModelPermissions]
+    
+    def perform_create(self, serializer):
+        serializer.save(creator=self.request.user)
