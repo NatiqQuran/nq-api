@@ -9,6 +9,11 @@ router = routers.DefaultRouter()
 router.register(r'users', account_views.UserViewSet)
 router.register(r'groups', account_views.GroupViewSet)
 router.register(r'mushafs', quran_views.MushafViewSet)
+router.register(r'surahs', quran_views.SurahViewSet)
+router.register(r'ayahs', quran_views.AyahViewSet)
+router.register(r'words', quran_views.WordViewSet)
+router.register(r'translations', quran_views.TranslationViewSet)
+router.register(r'ayah-translations', quran_views.AyahTranslationViewSet)
 router.register(r'auth', account_views.AuthViewSet, basename='auth')
 
 # The API URLs are now determined automatically by the router.
