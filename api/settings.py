@@ -38,7 +38,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'quran'
+    'knox',
+    'quran',
+    'account',
 ]
 
 MIDDLEWARE = [
@@ -125,3 +127,19 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'knox.auth.TokenAuthentication',
+        # for local development
+        # 'rest_framework.authentication.SessionAuthentication',
+        # 'rest_framework.authentication.BasicAuthentication',
+    )
+}
+
+from datetime import timedelta
+REST_KNOX = {
+    'TOKEN_TTL': timedelta(days=30),
+    'AUTO_REFRESH': True,
+    'TOKEN_LIMIT_PER_USER': None,
+}
