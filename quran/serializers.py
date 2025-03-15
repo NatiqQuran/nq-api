@@ -48,7 +48,28 @@ class AyahSerializer(serializers.ModelSerializer):
             return [] if self.context.get('text_format') == 'word' else ''
             
         if self.context.get('text_format') == 'word':
-            return [word.text for word in words]
+            # Get all word breakers for these words
+            word_ids = [word.id for word in words]
+            word_breakers = WordBreaker.objects.filter(word_id__in=word_ids)
+            
+            # Group breakers by word_id
+            breakers_by_word = {}
+            for breaker in word_breakers:
+                if breaker.word_id not in breakers_by_word:
+                    breakers_by_word[breaker.word_id] = []
+                breakers_by_word[breaker.word_id].append({
+                    'name': breaker.name
+                })
+            
+            # Return words with their breakers (only if they have any)
+            result = []
+            for word in words:
+                word_data = {'text': word.text}
+                if word.id in breakers_by_word:
+                    word_data['breakers'] = breakers_by_word[word.id]
+                result.append(word_data)
+            return result
+            
         return ' '.join(word.text for word in words)
 
     def get_breakers(self, instance):
