@@ -1,7 +1,7 @@
 from rest_framework import permissions, viewsets
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation
 from quran.serializers import (
-    MushafSerializer, SurahSerializer, AyahSerializer, 
+    MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
     WordSerializer, TranslationSerializer, AyahTranslationSerializer
 )
 
@@ -15,11 +15,17 @@ class MushafViewSet(viewsets.ModelViewSet):
 
 class SurahViewSet(viewsets.ModelViewSet):
     queryset = Surah.objects.all().order_by('number')
-    serializer_class = SurahSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return SurahDetailSerializer
+        return SurahSerializer
     
     def get_queryset(self):
         queryset = Surah.objects.all()
+        if self.action == 'retrieve':
+            queryset = queryset.prefetch_related('ayahs__words')
         mushaf_short_name = self.request.query_params.get('mushaf', None)
         if mushaf_short_name is not None:
             queryset = queryset.filter(mushaf__short_name=mushaf_short_name)
@@ -32,7 +38,7 @@ class AyahViewSet(viewsets.ModelViewSet):
     queryset = Ayah.objects.all().order_by('surah__number', 'number')
     serializer_class = AyahSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
-    
+
     def get_queryset(self):
         queryset = super().get_queryset()
         surah_id = self.request.query_params.get('surah', None)
@@ -46,11 +52,11 @@ class AyahViewSet(viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        format_param = self.request.query_params.get('format', 'text')
+        text_format = self.request.query_params.get('text_format', 'text')
         # Validate format parameter
-        if format_param not in ['text', 'word']:
-            format_param = 'text'
-        context['format'] = format_param
+        if text_format not in ['text', 'word']:
+            text_format = 'text'
+        context['text_format'] = text_format
         return context
 
     def perform_create(self, serializer):

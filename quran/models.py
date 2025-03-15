@@ -101,3 +101,25 @@ class AyahTranslation(models.Model):
     def __str__(self):
         return f"{self.translation.language} - {self.ayah}"
 
+class AyahBreaker(models.Model):
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ayah_breakers')
+    ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='breakers')
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_ayah_breakers', null=True, blank=True)
+    name = models.CharField(max_length=256)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.ayah}"
+
+class WordBreaker(models.Model):
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='word_breakers')
+    word = models.ForeignKey(Word, on_delete=models.CASCADE, related_name='breakers')
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_word_breakers', null=True, blank=True)
+    name = models.CharField(max_length=256)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.word}"
+
