@@ -21,17 +21,6 @@ class MushafSerializer(serializers.Serializer):
     def create(self, validated_data):
         return Mushaf.objects.create(**validated_data)
 
-class SurahSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Surah
-        fields = ['id', 'mushaf', 'name', 'number', 'period', 'name_pronunciation', 
-                 'name_translation', 'name_transliteration', 'search_terms']
-        read_only_fields = ['creator']
-
-    def create(self, validated_data):
-        validated_data['creator'] = self.context['request'].user
-        return super().create(validated_data)
-
 class AyahSerializer(serializers.ModelSerializer):
     text = serializers.SerializerMethodField()
     breakers = serializers.SerializerMethodField()
@@ -123,6 +112,23 @@ class AyahSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+class SurahSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Surah
+        fields = ['id', 'mushaf', 'name', 'number', 'period', 'name_pronunciation', 
+                 'name_translation', 'name_transliteration', 'search_terms']
+        read_only_fields = ['creator']
+
+    def create(self, validated_data):
+        validated_data['creator'] = self.context['request'].user
+        return super().create(validated_data)
+
+class SurahDetailSerializer(SurahSerializer):
+    ayahs = AyahSerializer(many=True, read_only=True)
+    
+    class Meta(SurahSerializer.Meta):
+        fields = SurahSerializer.Meta.fields + ['ayahs']
 
 class WordSerializer(serializers.ModelSerializer):
     class Meta:

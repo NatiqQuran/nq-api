@@ -1,7 +1,7 @@
 from rest_framework import permissions, viewsets
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation
 from quran.serializers import (
-    MushafSerializer, SurahSerializer, AyahSerializer, 
+    MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
     WordSerializer, TranslationSerializer, AyahTranslationSerializer
 )
 
@@ -15,11 +15,17 @@ class MushafViewSet(viewsets.ModelViewSet):
 
 class SurahViewSet(viewsets.ModelViewSet):
     queryset = Surah.objects.all().order_by('number')
-    serializer_class = SurahSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return SurahDetailSerializer
+        return SurahSerializer
     
     def get_queryset(self):
         queryset = Surah.objects.all()
+        if self.action == 'retrieve':
+            queryset = queryset.prefetch_related('ayahs__words')
         mushaf_short_name = self.request.query_params.get('mushaf', None)
         if mushaf_short_name is not None:
             queryset = queryset.filter(mushaf__short_name=mushaf_short_name)
