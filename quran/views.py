@@ -1,12 +1,8 @@
 from rest_framework import permissions, viewsets
-from quran.models import (
-    Mushaf, Surah, Ayah, Word, Translation, AyahTranslation,
-    AyahBreaker, WordBreaker
-)
+from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation
 from quran.serializers import (
     MushafSerializer, SurahSerializer, AyahSerializer, 
-    WordSerializer, TranslationSerializer, AyahTranslationSerializer,
-    AyahBreakerSerializer, WordBreakerSerializer
+    WordSerializer, TranslationSerializer, AyahTranslationSerializer
 )
 
 class MushafViewSet(viewsets.ModelViewSet):
@@ -38,7 +34,6 @@ class AyahViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
 
     def get_queryset(self):
-        print(self.request.query_params)
         queryset = super().get_queryset()
         surah_id = self.request.query_params.get('surah', None)
         
@@ -46,11 +41,10 @@ class AyahViewSet(viewsets.ModelViewSet):
         if surah_id is not None:
             queryset = queryset.filter(surah_id=surah_id)
             
-        # Prefetch both words and breakers
-        return queryset.prefetch_related('words', 'breakers')
+        # Always prefetch words since we need them for both formats
+        return queryset.prefetch_related('words')
 
     def get_serializer_context(self):
-        print("ok")
         context = super().get_serializer_context()
         text_format = self.request.query_params.get('text_format', 'text')
         # Validate format parameter

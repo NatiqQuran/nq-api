@@ -42,7 +42,6 @@ class AyahSerializer(serializers.ModelSerializer):
         read_only_fields = ['creator']
 
     def get_text(self, instance):
-        print("OK")
         words = list(instance.words.all().order_by('id'))
         if not words:
             return [] if self.context.get('text_format') == 'word' else ''
