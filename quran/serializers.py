@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.core.validators import RegexValidator
+from django.db import models
 
-from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation
+from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, AyahBreaker, WordBreaker
 
 class MushafSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
@@ -33,10 +34,11 @@ class SurahSerializer(serializers.ModelSerializer):
 
 class AyahSerializer(serializers.ModelSerializer):
     text = serializers.SerializerMethodField()
+    breakers = serializers.SerializerMethodField()
     
     class Meta:
         model = Ayah
-        fields = ['id', 'surah', 'number', 'sajdah', 'is_bismillah', 'bismillah_text', 'text']
+        fields = ['id', 'surah', 'number', 'sajdah', 'is_bismillah', 'bismillah_text', 'text', 'breakers']
         read_only_fields = ['creator']
 
     def get_text(self, instance):
@@ -48,6 +50,55 @@ class AyahSerializer(serializers.ModelSerializer):
         if self.context.get('text_format') == 'word':
             return [word.text for word in words]
         return ' '.join(word.text for word in words)
+
+    def get_breakers(self, instance):
+        breakers = instance.breakers.all()
+        if not breakers.exists():
+            return None
+            
+        # Get all breakers up to current ayah across all surahs
+        current_surah = instance.surah
+        current_number = instance.number
+        
+        all_breakers = AyahBreaker.objects.filter(
+            models.Q(
+                ayah__surah__number__lt=current_surah.number
+            ) | models.Q(
+                ayah__surah=current_surah,
+                ayah__number__lte=current_number
+            )
+        ).order_by('ayah__surah__number', 'ayah__number')
+        
+        # Keep running count of breakers
+        breaker_counts = {}
+        ayah_breakers = {}
+        
+        for breaker in all_breakers:
+            # Update count for this breaker name
+            if breaker.name not in breaker_counts:
+                breaker_counts[breaker.name] = 1
+            else:
+                breaker_counts[breaker.name] += 1
+                
+            # Store current counts for this ayah
+            if breaker.ayah_id not in ayah_breakers:
+                ayah_breakers[breaker.ayah_id] = []
+            
+            # Only add if name not already in this ayah's breakers
+            if not any(b['name'] == breaker.name for b in ayah_breakers[breaker.ayah_id]):
+                ayah_breakers[breaker.ayah_id].append({
+                    'name': breaker.name,
+                    'number': breaker_counts[breaker.name]
+                })
+        
+        # Return breakers for current ayah
+        return ayah_breakers.get(instance.id, None)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if representation['breakers'] is None:
+            representation.pop('breakers')
+        return representation
 
     def create(self, validated_data):
         validated_data['creator'] = self.context['request'].user
@@ -77,6 +128,26 @@ class AyahTranslationSerializer(serializers.ModelSerializer):
     class Meta:
         model = AyahTranslation
         fields = ['id', 'translation', 'ayah', 'text', 'bismillah']
+        read_only_fields = ['creator']
+
+    def create(self, validated_data):
+        validated_data['creator'] = self.context['request'].user
+        return super().create(validated_data)
+
+class AyahBreakerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AyahBreaker
+        fields = ['id', 'ayah', 'owner', 'name']
+        read_only_fields = ['creator']
+
+    def create(self, validated_data):
+        validated_data['creator'] = self.context['request'].user
+        return super().create(validated_data)
+
+class WordBreakerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WordBreaker
+        fields = ['id', 'word', 'owner', 'name']
         read_only_fields = ['creator']
 
     def create(self, validated_data):

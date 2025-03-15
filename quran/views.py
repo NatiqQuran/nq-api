@@ -1,8 +1,12 @@
 from rest_framework import permissions, viewsets
-from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation
+from quran.models import (
+    Mushaf, Surah, Ayah, Word, Translation, AyahTranslation,
+    AyahBreaker, WordBreaker
+)
 from quran.serializers import (
     MushafSerializer, SurahSerializer, AyahSerializer, 
-    WordSerializer, TranslationSerializer, AyahTranslationSerializer
+    WordSerializer, TranslationSerializer, AyahTranslationSerializer,
+    AyahBreakerSerializer, WordBreakerSerializer
 )
 
 class MushafViewSet(viewsets.ModelViewSet):
@@ -42,8 +46,8 @@ class AyahViewSet(viewsets.ModelViewSet):
         if surah_id is not None:
             queryset = queryset.filter(surah_id=surah_id)
             
-        # Always prefetch words since we need them for both formats
-        return queryset.prefetch_related('words')
+        # Prefetch both words and breakers
+        return queryset.prefetch_related('words', 'breakers')
 
     def get_serializer_context(self):
         print("ok")
