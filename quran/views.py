@@ -32,8 +32,9 @@ class AyahViewSet(viewsets.ModelViewSet):
     queryset = Ayah.objects.all().order_by('surah__number', 'number')
     serializer_class = AyahSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
-    
+
     def get_queryset(self):
+        print(self.request.query_params)
         queryset = super().get_queryset()
         surah_id = self.request.query_params.get('surah', None)
         
@@ -45,12 +46,13 @@ class AyahViewSet(viewsets.ModelViewSet):
         return queryset.prefetch_related('words')
 
     def get_serializer_context(self):
+        print("ok")
         context = super().get_serializer_context()
-        format_param = self.request.query_params.get('format', 'text')
+        text_format = self.request.query_params.get('text_format', 'text')
         # Validate format parameter
-        if format_param not in ['text', 'word']:
-            format_param = 'text'
-        context['format'] = format_param
+        if text_format not in ['text', 'word']:
+            text_format = 'text'
+        context['text_format'] = text_format
         return context
 
     def perform_create(self, serializer):

@@ -40,11 +40,12 @@ class AyahSerializer(serializers.ModelSerializer):
         read_only_fields = ['creator']
 
     def get_text(self, instance):
+        print("OK")
         words = list(instance.words.all().order_by('id'))
         if not words:
-            return [] if self.context.get('format') == 'word' else ''
+            return [] if self.context.get('text_format') == 'word' else ''
             
-        if self.context.get('format') == 'word':
+        if self.context.get('text_format') == 'word':
             return [word.text for word in words]
         return ' '.join(word.text for word in words)
 
