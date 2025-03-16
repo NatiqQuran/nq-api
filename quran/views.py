@@ -2,7 +2,7 @@ from rest_framework import permissions, viewsets
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation
 from quran.serializers import (
     AyahSerializerView, MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
-    WordSerializer, TranslationSerializer, AyahTranslationSerializer
+    WordSerializer, TranslationSerializer, AyahTranslationSerializer, AyahAddSerializer
 )
 
 class MushafViewSet(viewsets.ModelViewSet):
@@ -62,6 +62,8 @@ class AyahViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return AyahSerializerView
+        if self.action == 'create':
+            return AyahAddSerializer
         return AyahSerializer
 
     def perform_create(self, serializer):

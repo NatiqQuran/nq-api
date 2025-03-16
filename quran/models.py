@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.utils import timezone
 
 class Mushaf(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mushafs')

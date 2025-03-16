@@ -228,3 +228,41 @@ class WordBreakerSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+class AyahAddSerializer(serializers.ModelSerializer):
+    surah_uuid = serializers.UUIDField()
+    text = serializers.CharField()
+    is_bismillah = serializers.BooleanField(default=False)
+    bismillah_text = serializers.CharField(required=False, allow_null=True)
+    sajdah = serializers.CharField(required=False, allow_null=True)
+    
+    class Meta:
+        model = Ayah
+        fields = ['surah_uuid', 'text', 'is_bismillah', 'bismillah_text', 'sajdah']
+        read_only_fields = ['creator']
+
+    def create(self, validated_data):
+        # Get the text and remove it from validated_data
+        text = validated_data.pop('text')
+        surah_uuid = validated_data.pop('surah_uuid')
+        
+        # Get the surah
+        surah = Surah.objects.get(id=surah_uuid)
+        
+        # Create the ayah
+        validated_data['surah'] = surah
+        validated_data['creator'] = self.context['request'].user
+        ayah = super().create(validated_data)
+        
+        # Create words from the text
+        if text:
+            # Split text into words (you might want to use a more sophisticated word splitting logic)
+            words = text.split()
+            for word_text in words:
+                Word.objects.create(
+                    ayah=ayah,
+                    text=word_text,
+                    creator=self.context['request'].user
+                )
+        
+        return ayah
