@@ -229,35 +229,50 @@ class WordBreakerSerializer(serializers.ModelSerializer):
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
 
-class AyahAddSerializer(serializers.ModelSerializer):
-    surah_uuid = serializers.UUIDField()
+class AyahAddSerializer(serializers.Serializer):
+    surah_id = serializers.IntegerField()
     text = serializers.CharField()
     is_bismillah = serializers.BooleanField(default=False)
     bismillah_text = serializers.CharField(required=False, allow_null=True)
     sajdah = serializers.CharField(required=False, allow_null=True)
-    
-    class Meta:
-        model = Ayah
-        fields = ['surah_uuid', 'text', 'is_bismillah', 'bismillah_text', 'sajdah']
-        read_only_fields = ['creator']
+
+    def to_representation(self, instance):
+        return {
+            'id': instance.id,
+            'number': instance.number,
+            'surah_id': instance.surah.id,
+            'is_bismillah': instance.is_bismillah,
+            'bismillah_text': instance.bismillah_text,
+            'sajdah': instance.sajdah
+        }
 
     def create(self, validated_data):
         # Get the text and remove it from validated_data
         text = validated_data.pop('text')
-        surah_uuid = validated_data.pop('surah_uuid')
+        surah_id = validated_data.pop('surah_id')
         
         # Get the surah
-        surah = Surah.objects.get(id=surah_uuid)
+        surah = Surah.objects.get(id=surah_id)
+        
+        # Get the latest ayah number in this surah and increment it
+        latest_ayah = Ayah.objects.filter(surah=surah).order_by('-number').first()
+        next_number = 1 if latest_ayah is None else latest_ayah.number + 1
         
         # Create the ayah
-        validated_data['surah'] = surah
-        validated_data['creator'] = self.context['request'].user
-        ayah = super().create(validated_data)
+        ayah_data = {
+            'surah': surah,
+            'creator': self.context['request'].user,
+            'number': next_number,
+            'is_bismillah': validated_data.get('is_bismillah', False),
+            'bismillah_text': validated_data.get('bismillah_text', None),
+            'sajdah': validated_data.get('sajdah', None)
+        }
+        ayah = Ayah.objects.create(**ayah_data)
         
         # Create words from the text
         if text:
             # Split text into words (you might want to use a more sophisticated word splitting logic)
-            words = text.split()
+            words = text.split(" ")
             for word_text in words:
                 Word.objects.create(
                     ayah=ayah,
