@@ -1,7 +1,7 @@
 from rest_framework import permissions, viewsets
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation
 from quran.serializers import (
-    MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
+    AyahSerializerView, MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
     WordSerializer, TranslationSerializer, AyahTranslationSerializer
 )
 
@@ -41,7 +41,7 @@ class AyahViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        surah_id = self.request.query_params.get('surah', None)
+        surah_id = self.request.query_params.get('surah_id', None)
         
         # Apply surah filter if provided
         if surah_id is not None:
@@ -59,6 +59,11 @@ class AyahViewSet(viewsets.ModelViewSet):
         context['text_format'] = text_format
         return context
 
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return AyahSerializerView
+        return AyahSerializer
+
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
@@ -69,7 +74,7 @@ class WordViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Word.objects.all()
-        ayah_id = self.request.query_params.get('ayah', None)
+        ayah_id = self.request.query_params.get('ayah_id', None)
         if ayah_id is not None:
             queryset = queryset.filter(ayah_id=ayah_id)
         return queryset
@@ -84,7 +89,7 @@ class TranslationViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Translation.objects.all()
-        mushaf = self.request.query_params.get('mushaf', None)
+        mushaf = self.request.query_params.get('mushaf_id', None)
         language = self.request.query_params.get('language', None)
         
         if mushaf is not None:
@@ -104,14 +109,17 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = AyahTranslation.objects.all()
-        translation_id = self.request.query_params.get('translation', None)
-        ayah_id = self.request.query_params.get('ayah', None)
         
-        if translation_id is not None:
+        # Get translation and ayah IDs from URL parameters
+        translation_id = self.request.query_params.get('translation_id', None)
+        ayah_id = self.request.query_params.get('ayah_id', None)
+        
+        # Apply filters if IDs are provided
+        if translation_id:
             queryset = queryset.filter(translation_id=translation_id)
-        if ayah_id is not None:
+        if ayah_id:
             queryset = queryset.filter(ayah_id=ayah_id)
-            
+
         return queryset
 
     def perform_create(self, serializer):
