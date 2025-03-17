@@ -32,7 +32,12 @@ class SurahViewSet(viewsets.ModelViewSet):
         return queryset.order_by('number')
 
     def perform_create(self, serializer):
-        serializer.save(creator=self.request.user)
+        # Get the last surah number
+        last_surah = Surah.objects.order_by('-number').first()
+        next_number = 1 if last_surah is None else last_surah.number + 1
+        
+        # Save the surah with the next number
+        serializer.save(creator=self.request.user, number=next_number)
 
 class AyahViewSet(viewsets.ModelViewSet):
     queryset = Ayah.objects.all().order_by('surah__number', 'number')
