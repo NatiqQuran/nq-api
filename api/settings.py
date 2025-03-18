@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'knox',
     'quran',
     'account',
+    'core'
 ]
 
 MIDDLEWARE = [

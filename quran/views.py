@@ -1,4 +1,5 @@
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, viewsets, status
+from rest_framework.response import Response
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation
 from quran.serializers import (
     AyahSerializerView, MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
@@ -32,7 +33,12 @@ class SurahViewSet(viewsets.ModelViewSet):
         return queryset.order_by('number')
 
     def perform_create(self, serializer):
-        serializer.save(creator=self.request.user)
+        # Get the last surah number
+        last_surah = Surah.objects.order_by('-number').first()
+        next_number = 1 if last_surah is None else last_surah.number + 1
+        
+        # Save the surah with the next number
+        serializer.save(creator=self.request.user, number=next_number)
 
 class AyahViewSet(viewsets.ModelViewSet):
     queryset = Ayah.objects.all().order_by('surah__number', 'number')
@@ -107,7 +113,7 @@ class TranslationViewSet(viewsets.ModelViewSet):
 class AyahTranslationViewSet(viewsets.ModelViewSet):
     queryset = AyahTranslation.objects.all()
     serializer_class = AyahTranslationSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, permissions.DjangoModelPermissions]
     
     def get_queryset(self):
         queryset = AyahTranslation.objects.all()
@@ -123,6 +129,22 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(ayah_id=ayah_id)
 
         return queryset
+
+    
+    def create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        translation_id = self.request.query_params.get('translation_id')
+        ayah_id = self.request.query_params.get('ayah_id')
+        AyahTranslation.objects.update_or_create(
+            ayah_id=ayah_id, 
+            translation_id=translation_id,
+            creator_id=self.request.user.id, 
+            defaults={
+                'text': serializer.validated_data['text'],
+            }
+        )
+        return Response(status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
