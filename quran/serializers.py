@@ -22,11 +22,15 @@ class SurahNameSerializer(serializers.Serializer):
 class SurahSerializer(serializers.ModelSerializer):
     names = serializers.SerializerMethodField()
     mushaf = MushafSerializer(read_only=True)
+    number_of_ayahs = serializers.SerializerMethodField()
     
     class Meta:
         model = Surah
-        fields = ['id', 'mushaf', 'names', 'number', 'period', 'search_terms']
+        fields = ['id', 'mushaf', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs']
         read_only_fields = ['creator']
+
+    def get_number_of_ayahs(self, instance):
+        return instance.ayahs.count()
 
     def get_names(self, instance):
         return [{
@@ -60,11 +64,17 @@ class AyahSerializer(serializers.ModelSerializer):
     text = serializers.SerializerMethodField()
     breakers = serializers.SerializerMethodField()
     bismillah = serializers.SerializerMethodField()
+    surah = serializers.SerializerMethodField()
     
     class Meta:
         model = Ayah
-        fields = ['id', 'number', 'sajdah', 'text', 'breakers', 'bismillah']
+        fields = ['id', 'number', 'sajdah', 'text', 'breakers', 'bismillah', 'surah']
         read_only_fields = ['creator']
+    
+    def get_surah(self, instance):
+        if instance.number == 1:
+            return SurahSerializer(instance.surah).data
+        return None
 
     def get_text(self, instance):
         words = list(instance.words.all().order_by('id'))
@@ -156,6 +166,8 @@ class AyahSerializer(serializers.ModelSerializer):
             representation.pop('sajdah')
         if representation['bismillah'] is None:
             representation.pop('bismillah')
+        if representation['surah'] is None:
+            representation.pop('surah')
         return representation
 
     def create(self, validated_data):
