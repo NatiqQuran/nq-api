@@ -40,6 +40,7 @@ def load_quran(apps, schema_editor):
     Word.objects.bulk_create(words)
 
 def load_translations(apps, schema_editor):
+    Mushaf = apps.get_model("quran", "Mushaf")
     Translation = apps.get_model("quran", "Translation")
     User = apps.get_model("auth", "User")
     AyahTranslation = apps.get_model("quran", "AyahTranslation")
@@ -51,10 +52,12 @@ def load_translations(apps, schema_editor):
         with open(translation,"r") as f:
             translation_data = json.load(f)
         user, _ = User.objects.get_or_create(username=translation_data["translator_username"])
+
+        mushaf = Mushaf.objects.get(short_name=translation_data["mushaf"])
         
         translation = Translation.objects.create(
             creator_id=1,
-            mushaf_id=1,
+            mushaf_id=mushaf.id,
             translator_id=user.id,
             source=translation_data["source"],
             approved=True,
