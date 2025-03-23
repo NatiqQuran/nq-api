@@ -5,11 +5,13 @@ from quran.serializers import (
     AyahSerializerView, MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
     WordSerializer, TranslationSerializer, AyahTranslationSerializer, AyahAddSerializer
 )
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 class MushafViewSet(viewsets.ModelViewSet):
     queryset = Mushaf.objects.all().order_by('short_name')
     serializer_class = MushafSerializer
-    permission_classes = [permissions.DjangoModelPermissions]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
     
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
@@ -40,6 +42,15 @@ class SurahViewSet(viewsets.ModelViewSet):
         # Save the surah with the next number
         serializer.save(creator=self.request.user, number=next_number)
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter("surah_id", 
+                    OpenApiTypes.NUMBER, 
+                    OpenApiParameter.QUERY)
+            ]
+    )
+)
 class AyahViewSet(viewsets.ModelViewSet):
     queryset = Ayah.objects.all().order_by('surah__number', 'number')
     serializer_class = AyahSerializer

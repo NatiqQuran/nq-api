@@ -94,8 +94,8 @@ class AyahTranslation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        unique_together = ['translation', 'ayah']
+    #class Meta:
+    #    unique_together = ['translation', 'ayah']
 
     def __str__(self):
         return f"{self.translation.language} - {self.ayah}"
