@@ -29,3 +29,10 @@ class PhraseSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+class PhraseModifySerializer(serializers.Serializer):
+    phrases = serializers.DictField(child=serializers.CharField(), required=True)
+
+    def create(self, validated_data):
+        validated_data['creator'] = self.context['request'].user
+        return super().create(validated_data)

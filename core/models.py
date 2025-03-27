@@ -26,20 +26,6 @@ class ErrorLog(models.Model):
         return f"Error: {self.error_name} - Status: {self.status_code} - Created at: {self.created_at} - Detail: {self.detail} - Account ID: {self.account_id} - Request token: {self.request_token} - Request user agent: {self.request_user_agent} - Request IPv4: {self.request_ipv4} - Request URL: {self.request_url} - Request controller: {self.request_controller} - Request action: {self.request_action} - Request ID: {self.request_id} - Request body: {self.request_body} - Request body content type: {self.request_body_content_type}"
 
 
-class PhraseTranslation(models.Model):
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phrase_translation')
-    phrase = models.ForeignKey('Phrase', models.DO_NOTHING)
-    text = models.TextField()
-    language = models.CharField(max_length=3)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['created_at']
-
-    def __str__(self):
-        return self.text
-
 class Phrase(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phrases')
     phrase = models.TextField(unique=True)
@@ -51,3 +37,18 @@ class Phrase(models.Model):
 
     def __str__(self):
         return self.phrase
+
+class PhraseTranslation(models.Model):
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phrase_translation')
+    phrase = models.ForeignKey(Phrase, models.DO_NOTHING, related_name='translations')
+    text = models.TextField()
+    language = models.CharField(max_length=3)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return self.text
+
