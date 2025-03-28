@@ -52,3 +52,15 @@ class LoginSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+
+class ProfileSerializer(UserSerializer):
+    class Meta(UserSerializer.Meta):
+        fields = ['username', 'email', 'first_name', 'last_name']
+
+    # Don't include email, if request.user is not the user itself
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        req_user = self.context['request'].user
+        if instance.id != req_user.id:
+            representation.pop("email")
+        return representation

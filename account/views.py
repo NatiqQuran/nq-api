@@ -6,7 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
-from .serializers import UserSerializer, GroupSerializer
+from .serializers import ProfileSerializer, UserSerializer, GroupSerializer
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 
 class LoginView(KnoxLoginView):
@@ -64,3 +64,14 @@ class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all().order_by('name')
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+# TODO: add remove account
+class ProfileViewSet(viewsets.mixins.RetrieveModelMixin, viewsets.mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    queryset = User.objects.all()
+    serializer_class = ProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=False, methods=['get'], serializer_class=ProfileSerializer)
+    def me(self, request):
+        serializer = self.get_serializer(self.request.user)
+        return Response(serializer.data)

@@ -17,6 +17,7 @@ router.register(r'words', quran_views.WordViewSet)
 router.register(r'translations', quran_views.TranslationViewSet)
 router.register(r'ayah-translations', quran_views.AyahTranslationViewSet)
 router.register(r'auth', account_views.AuthViewSet, basename='auth')
+router.register(r'profile', account_views.ProfileViewSet, basename="profile")
 router.register(r'phrases', core_views.PhraseViewSet)
 
 # The API URLs are now determined automatically by the router.
