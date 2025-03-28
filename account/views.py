@@ -71,7 +71,23 @@ class ProfileViewSet(viewsets.mixins.RetrieveModelMixin, viewsets.mixins.UpdateM
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    @action(detail=False, methods=['get'], serializer_class=ProfileSerializer)
+    @action(detail=False, methods=['get', 'post'], serializer_class=ProfileSerializer)
     def me(self, request):
-        serializer = self.get_serializer(self.request.user)
-        return Response(serializer.data)
+        if request.method == "GET":
+            serializer = self.get_serializer(self.request.user)
+            return Response(serializer.data)
+        elif request.method == "POST":
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            username = serializer.data.get("username")
+            first_name = serializer.data.get("first_name")
+            last_name = serializer.data.get("last_name")
+            user = self.request.user
+            if username:
+                user.username = username
+            if first_name:
+                user.first_name = first_name
+            if last_name:
+                user.last_name = last_name
+            user.save()
+            return Response(status=200)
