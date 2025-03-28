@@ -66,7 +66,7 @@ class GroupViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
 # TODO: add remove account
-class ProfileViewSet(viewsets.mixins.RetrieveModelMixin, viewsets.mixins.UpdateModelMixin, viewsets.GenericViewSet):
+class ProfileViewSet(viewsets.mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = User.objects.all()
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -90,4 +90,4 @@ class ProfileViewSet(viewsets.mixins.RetrieveModelMixin, viewsets.mixins.UpdateM
             if last_name:
                 user.last_name = last_name
             user.save()
-            return Response(status=200)
+            return Response(serializer.data,status=200)
