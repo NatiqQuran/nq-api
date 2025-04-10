@@ -1,0 +1,30 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: 
+      - "main"
+      - "test"
+      - "dev"
+  pull_request:
+    branches:
+      - "main"
+      - "test"
+      - "dev"
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build the Docker image
+      run: |
+        if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+          TAG="latest"
+        else
+          TAG="${GITHUB_REF##*/}"
+        fi
+        docker build . --file Dockerfile --tag natiq-api:$TAG
