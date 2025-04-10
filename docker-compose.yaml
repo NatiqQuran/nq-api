@@ -1,0 +1,35 @@
+services:
+ db:
+   image: public.ecr.aws/docker/library/postgres:14.15-alpine3.21
+   environment:
+     POSTGRES_DB: postgres
+     POSTGRES_USER: postgres
+     POSTGRES_PASSWORD: password
+   healthcheck:
+            test: [ "CMD-SHELL", "pg_isready" ]
+            interval: 1s
+            timeout: 5s
+            retries: 10
+   ports:
+     - "5432:5432"
+    
+
+ django-web:
+   build: .
+   container_name: nq-api
+   ports:
+     - "80:80"
+   depends_on:
+     - db
+   environment:
+     SECRET_KEY: bruh
+     DEBUG: 1
+     DJANGO_LOGLEVEL: info
+     DJANGO_ALLOWED_HOSTS: localhost
+     DATABASE_NAME: postgres
+     DATABASE_USERNAME: postgres
+ 
+     DATABASE_PASSWORD: password
+     DATABASE_HOST: db
+     DATABASE_PORT: 5432
+ 

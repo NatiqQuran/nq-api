@@ -11,7 +11,7 @@ def load_quran(apps, schema_editor):
     Ayah = apps.get_model("quran", "Ayah")
     Word = apps.get_model("quran", "Word")
     # Load quran data file
-    with open("./quran.json", "r") as f:
+    with open("./data/initial_data/mushafs/hafs.json", "r") as f:
         quran_data = json.load(f)
     mushaf_data = quran_data["mushaf"]
 
@@ -48,7 +48,7 @@ def load_translations(apps, schema_editor):
     ayah_translations = []
 
     # Load translations files
-    for translation in list(os.scandir("./translations")):
+    for translation in list(os.scandir("./data/initial_data/translations/")):
         with open(translation,"r") as f:
             translation_data = json.load(f)
         user, _ = User.objects.get_or_create(username=translation_data["translator_username"])
