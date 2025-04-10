@@ -8,3 +8,4 @@ Markdown==3.7
 psycopg2==2.9.10
 PyJWT==2.9.0
 sqlparse==0.5.3
+drf-spectacular==0.26.3
