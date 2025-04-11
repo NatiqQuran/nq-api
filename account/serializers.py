@@ -52,3 +52,27 @@ class LoginSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+
+class ProfileSerializer(UserSerializer):
+    class Meta(UserSerializer.Meta):
+        fields = ['username', 'email', 'first_name', 'last_name']
+        extra_kwargs = {
+            'first_name': {'required': False},
+            'last_name': {'required': False},
+            'password': {'required': False},
+            'password2': {'required': False},
+            'email': {'required': False}
+        }
+
+    # Don't include email, if request.user is not the user itself
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        req_user = self.context['request'].user
+        id = instance.get("id")
+        if id and id != req_user.id:
+            representation.pop("email")
+        return representation
+
+    # overwrite password check
+    def validate(self, args):
+        return args

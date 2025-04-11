@@ -6,7 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
-from .serializers import UserSerializer, GroupSerializer
+from .serializers import ProfileSerializer, UserSerializer, GroupSerializer
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 
 class LoginView(KnoxLoginView):
@@ -64,3 +64,30 @@ class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all().order_by('name')
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+# TODO: add remove account
+class ProfileViewSet(viewsets.mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    queryset = User.objects.all()
+    serializer_class = ProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=False, methods=['get', 'post'], serializer_class=ProfileSerializer)
+    def me(self, request):
+        if request.method == "GET":
+            serializer = self.get_serializer(self.request.user)
+            return Response(serializer.data)
+        elif request.method == "POST":
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            username = serializer.data.get("username")
+            first_name = serializer.data.get("first_name")
+            last_name = serializer.data.get("last_name")
+            user = self.request.user
+            if username:
+                user.username = username
+            if first_name:
+                user.first_name = first_name
+            if last_name:
+                user.last_name = last_name
+            user.save()
+            return Response(serializer.data,status=200)

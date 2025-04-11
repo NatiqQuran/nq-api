@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from django.core.validators import RegexValidator
 from django.db import models
 
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, AyahBreaker, WordBreaker
