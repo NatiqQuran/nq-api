@@ -10,12 +10,16 @@ def load_quran(apps, schema_editor):
     Mushaf = apps.get_model("quran", "Mushaf")
     Ayah = apps.get_model("quran", "Ayah")
     Word = apps.get_model("quran", "Word")
+    User = apps.get_model("auth", "User")
+
+    user = User.objects.create(username="curator")
+
     # Load quran data file
     with open("./data/initial_data/mushafs/hafs.json", "r") as f:
         quran_data = json.load(f)
     mushaf_data = quran_data["mushaf"]
 
-    Mushaf.objects.create(creator_id=1, name=mushaf_data["name"], short_name=mushaf_data["short_name"], source=mushaf_data["source"])
+    Mushaf.objects.create(creator_id=user.id, name=mushaf_data["name"], short_name=mushaf_data["short_name"], source=mushaf_data["source"])
 
     ayahs = []
     words = []
@@ -23,18 +27,18 @@ def load_quran(apps, schema_editor):
     # TODO: this is insane time complexity O(n^3) 
     for surah_data in quran_data["surahs"]:
         surah = Mushaf.objects.get(name=mushaf_data["name"])\
-            .surahs.create(creator_id=1,number=surah_data["number"], name=surah_data["name"], period=surah_data["period"])
+            .surahs.create(creator_id=user.id,number=surah_data["number"], name=surah_data["name"], period=surah_data["period"])
         surah.save()
         for ayah in surah_data["ayahs"]:
             ayahs.append(Ayah(
-                creator_id=1,
+                creator_id=user.id,
                 surah_id=surah_data["number"],
                 number=ayah["number"],
                 sajdah=ayah["sajdah"],
                 is_bismillah=ayah["is_bismillah"],
                 bismillah_text=ayah["bismillah_text"],))
             for word in ayah["words"]:
-                words.append(Word(ayah_id=ayah["number"], text=word["text"], creator_id=1))
+                words.append(Word(ayah_id=ayah["number"], text=word["text"], creator_id=user.id))
 
     Ayah.objects.bulk_create(ayahs)
     Word.objects.bulk_create(words)
@@ -44,6 +48,8 @@ def load_translations(apps, schema_editor):
     Translation = apps.get_model("quran", "Translation")
     User = apps.get_model("auth", "User")
     AyahTranslation = apps.get_model("quran", "AyahTranslation")
+
+    user = User.objects.get(username="curator")
 
     ayah_translations = []
 
@@ -56,7 +62,7 @@ def load_translations(apps, schema_editor):
         mushaf = Mushaf.objects.get(short_name=translation_data["mushaf"])
         
         translation = Translation.objects.create(
-            creator_id=1,
+            creator_id=user.id,
             mushaf_id=mushaf.id,
             translator_id=user.id,
             source=translation_data["source"],
@@ -68,7 +74,7 @@ def load_translations(apps, schema_editor):
         for surah in translation_data["surahs"]:
             for ayah in surah["ayah_translations"]:
                 ayah_translations.append(AyahTranslation(
-                    creator_id=1,
+                    creator_id=user.id,
                     translation_id=translation.id,
                     ayah_id=ayah["number"],
                     text=ayah["text"],
