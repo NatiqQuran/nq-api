@@ -28,9 +28,6 @@ services:
     environment:
       SECRET_KEY: bruh
       DEBUG: 1
-      DJANGO_SUPERUSER_USERNAME: admin
-      DJANGO_SUPERUSER_EMAIL: admin@gmail.com
-      DJANGO_SUPERUSER_PASSWORD: adminadmin
       DJANGO_LOGLEVEL: info
       DJANGO_ALLOWED_HOSTS: localhost
       CSRF_TRUSTED_ORIGINS: http://localhost:8001
