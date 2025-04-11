@@ -32,4 +32,4 @@ jobs:
           push: true
           tags: |
             ${{ vars.DOCKER_HUB_USERNAME }}/nq-api:latest
-            ${{ secrets.DOCKER_HUB_USERNAME }}/nq-api:${{ github.ref_name }}
+            ${{ vars.DOCKER_HUB_USERNAME }}/nq-api:${{ github.ref_name }}
