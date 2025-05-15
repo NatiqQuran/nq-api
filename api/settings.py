@@ -12,10 +12,14 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_NAME = os.path.basename(BASE_DIR)
 
+env = environ.Env()
+environ.Env.read_env(env_file=BASE_DIR.parent / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -24,7 +28,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(os.environ.get("DEBUG", default=0))
+# DEBUG = bool(os.environ.get("DEBUG", default=0))
+DEBUG = True
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1").split(",")
 
@@ -162,3 +167,40 @@ REST_KNOX = {
     'AUTO_REFRESH': True,
     'TOKEN_LIMIT_PER_USER': None,
 }
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
+
+
+LOCATION_PREFIX = ""
+PUBLIC_MEDIA_LOCATION = f"{LOCATION_PREFIX}media"
+PRIVATE_MEDIA_LOCATION = f"{LOCATION_PREFIX}private"
+
+AWS_DEFAULT_ACL = None
+AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="DRDQG7HDWHBWOO8VODI3")
+AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="qRF761K1TJYxwAA6kogePJq2kgW7DH1FJeEsJ0VQ")
+AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="testtest222")
+# Set "virtual" for https://<bucket_name>.<endpoint>.com
+# Set "path" for https://<endpoint>.com/<bucket_name>
+# Hetzner Object Storage uses "virtual".
+AWS_S3_ADDRESSING_STYLE = "virtual"
+AWS_S3_ENDPOINT_URL = env(
+    "AWS_S3_ENDPOINT_URL",
+    default="https://hel1.your-objectstorage.com"
+)
+AWS_DEFAULT_ACL = None # private by default
+# prefix for this project's files on the Bucket, "" to disable
+LOCATION_PREFIX = env("LOCATION_PREFIX", default=f"{PROJECT_NAME}/")
+PUBLIC_MEDIA_LOCATION = f"{LOCATION_PREFIX}media"
+PRIVATE_MEDIA_LOCATION = f"{LOCATION_PREFIX}private"
+MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/{LOCATION_PREFIX}media/"
+STORAGES["default"] = {
+    "BACKEND": "media_app.storage_backends.PublicMediaStorage"
+}
+PRESIGNED_URL_EXPIRATION = env.int("PRESIGNED_URL_EXPIRATION", default=600)

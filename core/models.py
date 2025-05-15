@@ -52,3 +52,13 @@ class PhraseTranslation(models.Model):
     def __str__(self):
         return self.text
 
+
+def _get_random_filename(instance, filename):
+    model_name = instance.__class__.__name__.lower()
+    ext = filename.split('.')[-1]
+    new_filename = f"{uuid.uuid4()}.{ext}"
+    return os.path.join(model_name, new_filename)
+
+class PublicDocument(models.Model):
+    title = models.CharField(max_length=255)
+    file = models.FileField(upload_to=_get_random_filename)

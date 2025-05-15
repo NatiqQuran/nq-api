@@ -3,9 +3,9 @@ from django.contrib.auth.models import User
 
 class Mushaf(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mushafs')
-    short_name = models.CharField(max_length=100, blank=True, default='')
+    short_name = models.CharField(max_length=100)
     name = models.TextField()
-    source = models.TextField()
+    source = models.TextField(default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
