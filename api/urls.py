@@ -3,7 +3,7 @@ from rest_framework import routers
 from account import views as account_views
 from quran import views as quran_views
 from core import views as core_views
-from django.urls import path, include
+from django.urls import path, include, re_path
 from knox import views as knox_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
@@ -31,4 +31,5 @@ urlpatterns = [
     path('auth/login/', account_views.LoginView.as_view(), name='knox_login'),
     path('auth/logout/', knox_views.LogoutView.as_view(), name='knox_logout'),
     path('auth/logoutall/', knox_views.LogoutAllView.as_view(), name='knox_logoutall'),
+    re_path(r'^upload/(?P<filename>[^/]+)$', core_views.FileUploadView.as_view()),
 ]

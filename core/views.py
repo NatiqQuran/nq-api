@@ -1,8 +1,10 @@
+from rest_framework.parsers import FileUploadParser
 from django.http import HttpResponse
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, views
 from .models import ErrorLog, Phrase, PhraseTranslation
 from .serializers import ErrorLogSerializer, PhraseModifySerializer, PhraseSerializer, PhraseTranslationSerializer
 from rest_framework.decorators import action
+from storages.backends.s3boto3 import S3Boto3Storage
 
 class ErrorLogViewSet(viewsets.ModelViewSet):
     queryset = ErrorLog.objects.all()
@@ -41,3 +43,17 @@ class PhraseTranslationViewSet(viewsets.ModelViewSet):
     queryset = PhraseTranslation.objects.all()
     serializer_class = PhraseTranslationSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+class Storage(S3Boto3Storage):
+    bucket_name = 'testtest222'
+
+class FileUploadView(views.APIView):
+    parser_classes = (FileUploadParser, )
+
+    def put(self, request, filename, format=None):
+        file_obj = request.FILES['file']
+        storage = Storage()
+        storage.save(filename, file_obj)
+        # do some stuff with uploaded file
+        return HttpResponse(status=204)
+
