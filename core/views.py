@@ -8,7 +8,8 @@ from storages.backends.s3boto3 import S3Boto3Storage
 import uuid
 from rest_framework.response import Response
 import os
-import magic  # Add this import
+import magic
+import hashlib
 
 class ErrorLogViewSet(viewsets.ModelViewSet):
     queryset = ErrorLog.objects.all()
@@ -60,25 +61,24 @@ FOLDERS = {
         "type": "mp3",
         "description": "Audio recitations of Quran"
     },
-    "translations": {
-        "type": "pdf",
-        "description": "Translation documents"
-    },
-    "tajweed": {
-        "type": "pdf",
-        "description": "Tajweed learning materials"
-    }
 }
 
 # Define MIME types for allowed file types
 MIME_TYPES = {
-    "mp3": ["audio/mp3"],
-    "pdf": ["application/pdf"]
+    "mp3": ["audio/mp3", "audio/mpeg"],
 }
 
 class FileUploadView(views.APIView):
     parser_classes = (MultiPartParser, )
     permission_classes = [permissions.IsAuthenticated]
+
+    def calculate_file_hash(self, file_obj):
+        """Calculate SHA256 hash of a file."""
+        sha256_hash = hashlib.sha256()
+        # Read the file in chunks to handle large files efficiently
+        for chunk in file_obj.chunks():
+            sha256_hash.update(chunk)
+        return sha256_hash.hexdigest()
 
     def put(self, request, format=None):
         file_obj = request.FILES['file']
@@ -116,6 +116,17 @@ class FileUploadView(views.APIView):
                 status=400
             )
         
+        # Calculate file hash
+        file_hash = self.calculate_file_hash(file_obj)
+        file_obj.seek(0)  # Reset file pointer to beginning
+        
+        # Check for duplicate file
+        existing_file = File.objects.filter(file_hash=file_hash).first()
+        if existing_file:
+            return Response({
+                'uuid': existing_file.s3_uuid,
+            })
+        
         # Generate UUID for the file
         file_uuid = str(uuid.uuid4())
         
@@ -133,8 +144,11 @@ class FileUploadView(views.APIView):
             size=file_obj.size,
             s3_uuid=file_uuid,
             upload_name=original_filename,
+            file_hash=file_hash,
             uploader=request.user
         )
         
-        return Response({'uuid': file_uuid})
+        return Response({
+            'uuid': file_uuid,
+        })
 
