@@ -10,6 +10,7 @@ from rest_framework.response import Response
 import os
 import magic
 import hashlib
+from django.conf import settings
 
 class ErrorLogViewSet(viewsets.ModelViewSet):
     queryset = ErrorLog.objects.all()
@@ -50,10 +51,10 @@ class PhraseTranslationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
 class Storage(S3Boto3Storage):
-    bucket_name = 'natiq'
+    bucket_name = settings.AWS_STORAGE_BUCKET_NAME
     default_acl = 'public-read'
     file_overwrite = False
-    location = 'bruh'
+    location = 'uncategorized'
 
 # Define allowed folders and their file types
 FOLDERS = {
