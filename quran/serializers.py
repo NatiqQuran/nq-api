@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.db import models
+from datetime import datetime
 
-from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, AyahBreaker, WordBreaker
+from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, AyahBreaker, WordBreaker, Recitation, File, RecitationTimestamp
 
 class MushafSerializer(serializers.ModelSerializer):
     class Meta:
@@ -292,3 +293,63 @@ class AyahAddSerializer(serializers.Serializer):
                 )
         
         return ayah
+
+class RecitationSerializer(serializers.ModelSerializer):
+    file = serializers.UUIDField(source='file.s3_uuid')
+    timestamps = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Recitation
+        fields = ['id', 'mushaf', 'reciter_account', 'recitation_date', 'recitation_location', 
+                 'duration', 'file', 'recitation_type', 'created_at', 'updated_at', 'timestamps']
+        read_only_fields = ['creator']
+
+    def get_timestamps(self, obj):
+        timestamps = {}
+        for timestamp in obj.timestamps.all():
+            # Format the time as HH:MM:SS.mmm
+            time_str = timestamp.start_time.strftime('%H:%M:%S.%f')[:-3]  # Remove last 3 digits of microseconds
+            key = f"{timestamp.surah.number}:{timestamp.ayah.number}"
+            timestamps[key] = time_str
+        return timestamps
+
+    def create(self, validated_data):
+        timestamps_data = self.initial_data.get('timestamps', None)
+        file_data = validated_data.pop('file', None)
+        if file_data and 's3_uuid' in file_data:
+            validated_data['file_id'] = File.objects.get(s3_uuid=file_data['s3_uuid']).id
+        validated_data['creator'] = self.context['request'].user
+        
+        # Create the recitation
+        recitation = super().create(validated_data)
+        
+        # Create timestamps if provided
+        if timestamps_data:
+            for key, time_str in timestamps_data.items():
+                try:
+                    surah_num, ayah_num = map(int, key.split(':'))
+                    hour, minute, second_ms = time_str.split(':')
+                    second, millisecond = second_ms.split('.')
+                    
+                    # Create datetime object
+                    start_time = datetime.strptime(
+                        f"{hour}:{minute}:{second}.{millisecond}",
+                        "%H:%M:%S.%f"
+                    )
+                    
+                    # Get surah and ayah
+                    surah = Surah.objects.get(number=surah_num, mushaf=recitation.mushaf)
+                    ayah = Ayah.objects.get(number=ayah_num, surah=surah)
+                    
+                    # Create timestamp
+                    RecitationTimestamp.objects.create(
+                        recitation=recitation,
+                        surah=surah,
+                        ayah=ayah,
+                        start_time=start_time
+                    )
+                except (ValueError, Surah.DoesNotExist, Ayah.DoesNotExist):
+                    # Skip invalid timestamps
+                    continue
+        
+        return recitation

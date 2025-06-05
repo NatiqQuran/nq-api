@@ -1,9 +1,9 @@
 from rest_framework import permissions, viewsets, status
 from rest_framework.response import Response
-from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation
+from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, Recitation
 from quran.serializers import (
     AyahSerializerView, MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
-    WordSerializer, TranslationSerializer, AyahTranslationSerializer, AyahAddSerializer
+    WordSerializer, TranslationSerializer, AyahTranslationSerializer, AyahAddSerializer, RecitationSerializer
 )
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
@@ -159,3 +159,20 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
+
+class RecitationViewSet(viewsets.ModelViewSet):
+    queryset = Recitation.objects.all()
+    serializer_class = RecitationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = Recitation.objects.all()
+        # Filter by mushaf if provided
+        mushaf_id = self.request.query_params.get('mushaf_id', None)
+        if mushaf_id is not None:
+            queryset = queryset.filter(mushaf_id=mushaf_id)
+        # Filter by reciter if provided
+        reciter_id = self.request.query_params.get('reciter_id', None)
+        if reciter_id is not None:
+            queryset = queryset.filter(reciter_account_id=reciter_id)
+        return queryset

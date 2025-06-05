@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+import os
 
 class ErrorLog(models.Model):
     error_name = models.CharField(max_length=256)
@@ -62,3 +63,18 @@ def _get_random_filename(instance, filename):
 class PublicDocument(models.Model):
     title = models.CharField(max_length=255)
     file = models.FileField(upload_to=_get_random_filename)
+
+class File(models.Model):
+    format = models.CharField(max_length=10)  # mp3, jpg, etc.
+    size = models.BigIntegerField()  # size in bytes
+    s3_uuid = models.UUIDField()
+    upload_name = models.CharField(max_length=255)
+    deleted_time = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='deleted_files')
+    uploader = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_files')
+    uploaded_time = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.upload_name} ({self.format})"
