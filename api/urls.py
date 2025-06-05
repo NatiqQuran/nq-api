@@ -19,6 +19,7 @@ router.register(r'ayah-translations', quran_views.AyahTranslationViewSet)
 router.register(r'auth', account_views.AuthViewSet, basename='auth')
 router.register(r'profile', account_views.ProfileViewSet, basename="profile")
 router.register(r'phrases', core_views.PhraseViewSet)
+router.register(r'recitations', quran_views.RecitationViewSet)
 
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
@@ -31,5 +32,5 @@ urlpatterns = [
     path('auth/login/', account_views.LoginView.as_view(), name='knox_login'),
     path('auth/logout/', knox_views.LogoutView.as_view(), name='knox_logout'),
     path('auth/logoutall/', knox_views.LogoutAllView.as_view(), name='knox_logoutall'),
-    re_path(r'^upload/(?P<filename>[^/]+)$', core_views.FileUploadView.as_view()),
+    path('upload/', core_views.FileUploadView.as_view()),
 ]

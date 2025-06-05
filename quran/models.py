@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from core.models import File
 
 class Mushaf(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mushafs')
@@ -121,4 +122,33 @@ class WordBreaker(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.word}"
+
+class Recitation(models.Model):
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recitations')
+    mushaf = models.ForeignKey(Mushaf, on_delete=models.CASCADE, related_name='recitations')
+    reciter_account = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recited_works')
+    recitation_date = models.DateField()
+    recitation_location = models.TextField()
+    duration = models.DurationField()
+    file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='recitations')
+    recitation_type = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Recitation by {self.reciter_account.username} on {self.recitation_date}"
+
+class RecitationTimestamp(models.Model):
+    recitation = models.ForeignKey(Recitation, on_delete=models.CASCADE, related_name='timestamps')
+    start_time = models.DateTimeField()
+    surah = models.ForeignKey(Surah, on_delete=models.CASCADE, related_name='recitation_timestamps')
+    ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='recitation_timestamps')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['start_time']
+
+    def __str__(self):
+        return f"Timestamp for {self.recitation} at {self.start_time} - {self.surah.name} {self.ayah.number}"
 
