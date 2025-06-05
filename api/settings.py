@@ -183,8 +183,8 @@ PUBLIC_MEDIA_LOCATION = f"{LOCATION_PREFIX}media"
 PRIVATE_MEDIA_LOCATION = f"{LOCATION_PREFIX}private"
 
 AWS_DEFAULT_ACL = None
-AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="fd74b4ee-8f1b-433c-9269-c69b347b74ad")
-AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="c96fff12923011d559be8fc5b2bf8491bbb71c7687de497fdcdafdcb41e8e073")
+AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="")
+AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="")
 AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="natiq")
 # Set "virtual" for https://<bucket_name>.<endpoint>.com
 # Set "path" for https://<endpoint>.com/<bucket_name>
@@ -192,7 +192,7 @@ AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="natiq")
 AWS_S3_ADDRESSING_STYLE = "virtual"
 AWS_S3_ENDPOINT_URL = env(
     "AWS_S3_ENDPOINT_URL",
-    default="https://s3.ir-thr-at1.arvanstorage.ir"
+    default=""
 )
 AWS_DEFAULT_ACL = None # private by default
 # prefix for this project's files on the Bucket, "" to disable
