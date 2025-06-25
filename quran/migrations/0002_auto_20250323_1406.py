@@ -12,7 +12,7 @@ def load_quran(apps, schema_editor):
     Word = apps.get_model("quran", "Word")
     User = apps.get_model("auth", "User")
 
-    user = User.objects.create(username="curator")
+    user, _ = User.objects.get_or_create(username="curator")
 
     # Load quran data file
     with open("./data/initial_data/mushafs/hafs.json", "r") as f:

@@ -1,4 +1,4 @@
-from rest_framework import permissions, viewsets, status
+from rest_framework import permissions, viewsets, status, filters
 from rest_framework.response import Response
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, Recitation
 from quran.serializers import (
@@ -7,11 +7,16 @@ from quran.serializers import (
 )
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
+from django_filters.rest_framework import DjangoFilterBackend
 
 class MushafViewSet(viewsets.ModelViewSet):
     queryset = Mushaf.objects.all().order_by('short_name')
     serializer_class = MushafSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["short_name", "name", "source"]
+    ordering_fields = ['created_at']
+    pegination_class = None
     
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
@@ -19,7 +24,11 @@ class MushafViewSet(viewsets.ModelViewSet):
 class SurahViewSet(viewsets.ModelViewSet):
     queryset = Surah.objects.all().order_by('number')
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
-    
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name"]
+    ordering_fields = ['created_at']
+    pegination_class = None
+
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return SurahDetailSerializer
@@ -55,6 +64,10 @@ class AyahViewSet(viewsets.ModelViewSet):
     queryset = Ayah.objects.all().order_by('surah__number', 'number')
     serializer_class = AyahSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["number", "text"]
+    ordering_fields = ['created_at']
+    pegination_class = None
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -90,6 +103,10 @@ class WordViewSet(viewsets.ModelViewSet):
     queryset = Word.objects.all()
     serializer_class = WordSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["text"]
+    ordering_fields = ['created_at']
+    pegination_class = None
     
     def get_queryset(self):
         queryset = Word.objects.all()
@@ -105,6 +122,10 @@ class TranslationViewSet(viewsets.ModelViewSet):
     queryset = Translation.objects.all()
     serializer_class = TranslationSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["text"]
+    ordering_fields = ['created_at']
+    pegination_class = None
     
     def get_queryset(self):
         queryset = Translation.objects.all()
@@ -124,7 +145,11 @@ class TranslationViewSet(viewsets.ModelViewSet):
 class AyahTranslationViewSet(viewsets.ModelViewSet):
     queryset = AyahTranslation.objects.all()
     serializer_class = AyahTranslationSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, permissions.DjangoModelPermissions]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["text"]
+    ordering_fields = ['created_at']
+    pegination_class = None
     
     def get_queryset(self):
         queryset = AyahTranslation.objects.all()
@@ -163,7 +188,11 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
 class RecitationViewSet(viewsets.ModelViewSet):
     queryset = Recitation.objects.all()
     serializer_class = RecitationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["recitation_date", "recitation_location", "recitation_type"]
+    ordering_fields = ['created_at', 'duration', 'recitation_date']
+    pegination_class = None
 
     def get_queryset(self):
         queryset = Recitation.objects.all()

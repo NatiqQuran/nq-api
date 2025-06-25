@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from core.models import File
+import uuid
 
 class Mushaf(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mushafs')
@@ -63,6 +64,7 @@ class Word(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='words')
     ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='words')
     text = models.TextField()
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -126,6 +128,7 @@ class WordBreaker(models.Model):
 class Recitation(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recitations')
     mushaf = models.ForeignKey(Mushaf, on_delete=models.CASCADE, related_name='recitations')
+    surah = models.ForeignKey(Surah, on_delete=models.CASCADE, related_name='recitations')
     reciter_account = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recited_works')
     recitation_date = models.DateField()
     recitation_location = models.TextField()
@@ -141,8 +144,8 @@ class Recitation(models.Model):
 class RecitationTimestamp(models.Model):
     recitation = models.ForeignKey(Recitation, on_delete=models.CASCADE, related_name='timestamps')
     start_time = models.DateTimeField()
-    surah = models.ForeignKey(Surah, on_delete=models.CASCADE, related_name='recitation_timestamps')
-    ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='recitation_timestamps')
+    end_time = models.DateTimeField(null=True, blank=True)
+    word = models.ForeignKey(Word, on_delete=models.CASCADE, related_name='recitation_timestamps', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -150,5 +153,5 @@ class RecitationTimestamp(models.Model):
         ordering = ['start_time']
 
     def __str__(self):
-        return f"Timestamp for {self.recitation} at {self.start_time} - {self.surah.name} {self.ayah.number}"
+        return f"Timestamp for {self.recitation} at {self.start_time}"
 

@@ -1,6 +1,6 @@
 from rest_framework.parsers import MultiPartParser
 from django.http import HttpResponse
-from rest_framework import viewsets, permissions, views
+from rest_framework import viewsets, permissions, views, filters
 from .models import ErrorLog, Phrase, PhraseTranslation, File
 from .serializers import ErrorLogSerializer, PhraseModifySerializer, PhraseSerializer, PhraseTranslationSerializer
 from rest_framework.decorators import action
@@ -11,6 +11,7 @@ import os
 import magic
 import hashlib
 from django.conf import settings
+from django_filters.rest_framework import DjangoFilterBackend
 
 class ErrorLogViewSet(viewsets.ModelViewSet):
     queryset = ErrorLog.objects.all()
@@ -21,6 +22,10 @@ class PhraseViewSet(viewsets.ModelViewSet):
     queryset = Phrase.objects.all()
     serializer_class = PhraseSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    # filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    # search_fields = ["recitation_date", "recitation_location", "recitation_type"]
+    # ordering_fields = ['created_at', 'duration', 'recitation_date']
+    # pegination_class = None
 
     @action(detail=False, methods=['post'], serializer_class=PhraseModifySerializer)
     def modify(self, request):
@@ -56,8 +61,8 @@ class Storage(S3Boto3Storage):
     file_overwrite = False
     location = 'uncategorized'
 
-# Define allowed folders and their file types
-FOLDERS = {
+# Define allowed subjects and their file types
+SUBJECTS = {
     "recitations": {
         "type": "mp3",
         "description": "Audio recitations of Quran"
@@ -87,9 +92,9 @@ class FileUploadView(views.APIView):
         
         # Get subject from query parameters
         subject = request.query_params.get('subject')
-        if not subject or subject not in FOLDERS:
+        if not subject or subject not in SUBJECTS:
             return Response(
-                {'error': f'Invalid or missing subject. Allowed subjects: {", ".join(FOLDERS.keys())}'},
+                {'error': f'Invalid or missing subject. Allowed subjects: {", ".join(SUBJECTS.keys())}'},
                 status=400
             )
         
@@ -98,9 +103,9 @@ class FileUploadView(views.APIView):
         ext = ext[1:].lower()  # Remove the dot and convert to lowercase
         
         # Validate file type
-        if ext != FOLDERS[subject]['type']:
+        if ext != SUBJECTS[subject]['type']:
             return Response(
-                {'error': f'Invalid file type for {subject}. Expected {FOLDERS[subject]["type"]}'},
+                {'error': f'Invalid file type for {subject}. Expected {SUBJECTS[subject]["type"]}'},
                 status=400
             )
         
@@ -152,4 +157,14 @@ class FileUploadView(views.APIView):
         return Response({
             'uuid': file_uuid,
         })
+
+class UploadSubjectsView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, format=None):
+        subjects_array = [
+            {"subject": key, **value}
+            for key, value in SUBJECTS.items()
+        ]
+        return Response(subjects_array)
 
