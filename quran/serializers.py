@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.db import models
 from datetime import datetime
+from django.conf import settings
 
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, AyahBreaker, WordBreaker, Recitation, File, RecitationTimestamp
 
@@ -295,61 +296,123 @@ class AyahAddSerializer(serializers.Serializer):
         return ayah
 
 class RecitationSerializer(serializers.ModelSerializer):
-    file = serializers.UUIDField(source='file.s3_uuid')
-    timestamps = serializers.SerializerMethodField()
+    file = serializers.DictField(write_only=True)
+    words_timestamps = serializers.ListField(
+        child=serializers.DictField(
+            child=serializers.CharField()
+        ),
+        required=True,
+        write_only=True
+    )
+    ayahs_timestamps = serializers.SerializerMethodField()
 
     class Meta:
         model = Recitation
-        fields = ['id', 'mushaf', 'reciter_account', 'recitation_date', 'recitation_location', 
-                 'duration', 'file', 'recitation_type', 'created_at', 'updated_at', 'timestamps']
+        fields = ['id', 'mushaf', 'surah', 'reciter_account', 'recitation_date', 'recitation_location', 
+                 'duration', 'file', 'recitation_type', 'created_at', 'updated_at', 'words_timestamps', 'ayahs_timestamps']
         read_only_fields = ['creator']
 
-    def get_timestamps(self, obj):
-        timestamps = {}
+    def get_ayahs_timestamps(self, obj):
+        # Get all timestamps ordered by start time
+        timestamps = obj.timestamps.all().order_by('start_time')
+        ayahs = Ayah.objects.filter(surah=obj.surah).all()
+        ayahs_first_words_as_id = set()
+        for ayah in ayahs:
+            words_with_id = ayah.words.values("id").first()
+            ayahs_first_words_as_id.add(words_with_id['id'])
+
+        if not timestamps:
+            return []
+        
+        # Skip the first ayah and get start times of remaining ayahs
+        ayah_start_times = []
+        for timestamp in timestamps[1:]:  # Skip first timestamp
+            start_time = timestamp.start_time.strftime('%H:%M:%S.%f')[:-3]  # Remove last 3 digits of microseconds
+            if timestamp.word_id in ayahs_first_words_as_id:
+                ayah_start_times.append(start_time)
+        return ayah_start_times
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        
+        action = self.context.get('view').action
+        # Check if timestamps should be included in response
+        request = self.context.get('request')
+        if request and request.query_params.get('words_timestamps', 'true').lower() == 'false' and action == "retrieve":
+            representation.pop('words_timestamps', None)
+        else:
+            representation['words_timestamps'] = self.get_words_timestamps(instance)
+        
+        if action == 'list':
+            representation.pop('words_timestamps', None)
+            representation.pop('ayahs_timestamps', None)
+            
+        return representation
+
+    def validate_timestamps(self, value):
+        if not value:
+            raise serializers.ValidationError("Timestamps are required")
+        return value
+
+    def get_file(self, obj):
+        return f"{settings.AWS_S3_ENDPOINT_URL}/{settings.AWS_STORAGE_BUCKET_NAME}/{settings.LOCATION_PREFIX}recitations/{obj.file.s3_uuid}.{obj.file.format}"
+
+    def get_words_timestamps(self, obj):
+        timestamps = []
         for timestamp in obj.timestamps.all():
             # Format the time as HH:MM:SS.mmm
-            time_str = timestamp.start_time.strftime('%H:%M:%S.%f')[:-3]  # Remove last 3 digits of microseconds
-            key = f"{timestamp.surah.number}:{timestamp.ayah.number}"
-            timestamps[key] = time_str
+            start_time = timestamp.start_time.strftime('%H:%M:%S.%f')[:-3]  # Remove last 3 digits of microseconds
+            end_time = timestamp.end_time.strftime('%H:%M:%S.%f')[:-3] if timestamp.end_time else None
+            
+            timestamps.append({
+                'start': start_time,
+                'end': end_time,
+                'word_uuid': str(timestamp.word.uuid) if timestamp.word else None
+            })
         return timestamps
 
     def create(self, validated_data):
-        timestamps_data = self.initial_data.get('timestamps', None)
         file_data = validated_data.pop('file', None)
+        
+        # Get file from s3_uuid
         if file_data and 's3_uuid' in file_data:
-            validated_data['file_id'] = File.objects.get(s3_uuid=file_data['s3_uuid']).id
+            try:
+                file = File.objects.get(s3_uuid=file_data['s3_uuid'])
+                validated_data['file_id'] = file.id
+            except File.DoesNotExist:
+                raise serializers.ValidationError({"file": "File with this s3_uuid does not exist"})
+        
         validated_data['creator'] = self.context['request'].user
+        
+        # Remove timestamps from validated_data as it's not a model field
+        timestamps_data = validated_data.pop('timestamps', None)
         
         # Create the recitation
         recitation = super().create(validated_data)
         
         # Create timestamps if provided
         if timestamps_data:
-            for key, time_str in timestamps_data.items():
+            for timestamp in timestamps_data:
                 try:
-                    surah_num, ayah_num = map(int, key.split(':'))
-                    hour, minute, second_ms = time_str.split(':')
-                    second, millisecond = second_ms.split('.')
+                    start_time = datetime.strptime(timestamp['start'], "%H:%M:%S.%f")
+                    end_time = datetime.strptime(timestamp['end'], "%H:%M:%S.%f") if timestamp.get('end') else None
                     
-                    # Create datetime object
-                    start_time = datetime.strptime(
-                        f"{hour}:{minute}:{second}.{millisecond}",
-                        "%H:%M:%S.%f"
-                    )
-                    
-                    # Get surah and ayah
-                    surah = Surah.objects.get(number=surah_num, mushaf=recitation.mushaf)
-                    ayah = Ayah.objects.get(number=ayah_num, surah=surah)
+                    # Get word if word_uuid is provided
+                    word = None
+                    if timestamp.get('word_uuid'):
+                        try:
+                            word = Word.objects.get(uuid=timestamp['word_uuid'])
+                        except Word.DoesNotExist:
+                            continue
                     
                     # Create timestamp
                     RecitationTimestamp.objects.create(
                         recitation=recitation,
-                        surah=surah,
-                        ayah=ayah,
-                        start_time=start_time
+                        start_time=start_time,
+                        end_time=end_time,
+                        word=word
                     )
-                except (ValueError, Surah.DoesNotExist, Ayah.DoesNotExist):
-                    # Skip invalid timestamps
+                except (ValueError, KeyError) as e:
                     continue
         
         return recitation
