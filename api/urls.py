@@ -30,6 +30,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
     path('auth/login/', account_views.LoginView.as_view(), name='knox_login'),
+    path('auth/register/', account_views.AuthViewSet.register, name='knox_register'),
     path('auth/logout/', knox_views.LogoutView.as_view(), name='knox_logout'),
     path('auth/logoutall/', knox_views.LogoutAllView.as_view(), name='knox_logoutall'),
     path('upload/', core_views.FileUploadView.as_view()),

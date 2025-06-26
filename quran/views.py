@@ -5,6 +5,8 @@ from quran.serializers import (
     AyahSerializerView, MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
     WordSerializer, TranslationSerializer, AyahTranslationSerializer, AyahAddSerializer, RecitationSerializer
 )
+
+from core import permissions as core_permissions
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from django_filters.rest_framework import DjangoFilterBackend
@@ -12,11 +14,14 @@ from django_filters.rest_framework import DjangoFilterBackend
 class MushafViewSet(viewsets.ModelViewSet):
     queryset = Mushaf.objects.all().order_by('short_name')
     serializer_class = MushafSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions, core_permissions.LimitedFieldEditPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["short_name", "name", "source"]
     ordering_fields = ['created_at']
     pegination_class = None
+    limited_fields = {
+        "status": ["published"]
+    }
     
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
@@ -121,11 +126,14 @@ class WordViewSet(viewsets.ModelViewSet):
 class TranslationViewSet(viewsets.ModelViewSet):
     queryset = Translation.objects.all()
     serializer_class = TranslationSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions, core_permissions.LimitedFieldEditPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["text"]
     ordering_fields = ['created_at']
     pegination_class = None
+    limited_fields = {
+        "status": ["published"]
+    }
     
     def get_queryset(self):
         queryset = Translation.objects.all()
@@ -188,11 +196,14 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
 class RecitationViewSet(viewsets.ModelViewSet):
     queryset = Recitation.objects.all()
     serializer_class = RecitationSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions, core_permissions.LimitedFieldEditPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["recitation_date", "recitation_location", "recitation_type"]
     ordering_fields = ['created_at', 'duration', 'recitation_date']
     pegination_class = None
+    limited_fields = {
+        "status": ["published"]
+    }
 
     def get_queryset(self):
         queryset = Recitation.objects.all()
