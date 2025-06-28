@@ -3,12 +3,12 @@ from django.db import models
 from datetime import datetime
 from django.conf import settings
 
-from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, AyahBreaker, WordBreaker, Recitation, File, RecitationTimestamp
+from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, AyahBreaker, WordBreaker, Recitation, File, RecitationTimestamp, Status
 
 class MushafSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mushaf
-        fields = ['id', 'short_name', 'name', 'source']
+        fields = ['id', 'short_name', 'name', 'source', 'status']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
@@ -205,7 +205,7 @@ class SurahDetailSerializer(SurahSerializer):
 class TranslationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Translation
-        fields = ['id', 'mushaf', 'translator', 'language', 'release_date', 'source', 'approved']
+        fields = ['id', 'mushaf', 'translator', 'language', 'release_date', 'source', 'status']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
@@ -308,7 +308,7 @@ class RecitationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recitation
-        fields = ['id', 'mushaf', 'surah', 'reciter_account', 'recitation_date', 'recitation_location', 
+        fields = ['id', 'mushaf', 'surah', 'status', 'reciter_account', 'recitation_date', 'recitation_location', 
                  'duration', 'file', 'recitation_type', 'created_at', 'updated_at', 'words_timestamps', 'ayahs_timestamps']
         read_only_fields = ['creator']
 

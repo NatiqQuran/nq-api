@@ -3,11 +3,17 @@ from django.contrib.auth.models import User
 from core.models import File
 import uuid
 
+class Status(models.TextChoices):
+    DRAFT = "draft", "Draft"
+    PENDING_REVIEW = "pending_review", "Pending review"
+    PUBLISHED = "published", "Published"
+
 class Mushaf(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mushafs')
     short_name = models.CharField(max_length=100)
     name = models.TextField()
     source = models.TextField(default="")
+    status = models.CharField(max_length=50, choices=Status.choices, default=Status.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -78,7 +84,8 @@ class Translation(models.Model):
     language = models.CharField(max_length=5)  # ISO 639-1 language code
     release_date = models.DateField(blank=True, null=True)
     source = models.CharField(max_length=300, blank=True, null=True)
-    approved = models.BooleanField(default=False)
+    # approved = models.BooleanField(default=False)
+    status = models.CharField(max_length=50, choices=Status.choices, default=Status.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -135,6 +142,7 @@ class Recitation(models.Model):
     duration = models.DurationField()
     file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='recitations')
     recitation_type = models.TextField()
+    status = models.CharField(max_length=50, choices=Status.choices, default=Status.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
