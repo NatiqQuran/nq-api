@@ -26,6 +26,26 @@ class MushafViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        # Allow admin users to edit even if published
+        if instance.status == 'published' and not request.user.is_staff:
+            return Response({'detail': 'Published Mushaf cannot be edited.'}, status=status.HTTP_403_FORBIDDEN)
+        status_value = request.data.get('status')
+        if status_value == 'pending_review':
+            # Count ayahs for this mushaf
+            ayah_count = Ayah.objects.filter(surah__mushaf=instance).count()
+            ayah_translation_count = AyahTranslation.objects.filter(translation__mushaf=instance).count()
+            if ayah_translation_count != ayah_count:
+                return Response({
+                    'detail': f'Mushaf is incomplete: {ayah_translation_count} of {ayah_count} ayahs translated.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        return super().update(request, *args, partial=partial, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, partial=True, **kwargs)
+
 class SurahViewSet(viewsets.ModelViewSet):
     queryset = Surah.objects.all().order_by('number')
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
@@ -150,6 +170,35 @@ class TranslationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        # Allow admin users to edit even if published
+        if instance.status == 'published' and not request.user.is_staff:
+            return Response({'detail': 'Published Translation cannot be edited.'}, status=status.HTTP_403_FORBIDDEN)
+        status_value = request.data.get('status')
+        # Only check if status is being set to pending_review
+        if status_value == 'pending_review':
+            # Count ayahs for this translation's mushaf
+            ayah_count = Ayah.objects.filter(surah__mushaf=instance.mushaf).count()
+            ayah_translation_count = AyahTranslation.objects.filter(translation=instance).count()
+            if ayah_translation_count != ayah_count:
+                return Response({
+                    'detail': f'Translation is incomplete: {ayah_translation_count} of {ayah_count} ayahs translated.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        return super().update(request, *args, partial=partial, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, partial=True, **kwargs)
+
+# TODO: FIX
+@extend_schema_view(
+    update=extend_schema(
+    parameters=[
+        OpenApiParameter(name='translation_id', description='Translation ID', required=True, type=int),
+        OpenApiParameter(name='ayah_id', description='Ayah ID', required=True, type=int),
+    ])
+)
 class AyahTranslationViewSet(viewsets.ModelViewSet):
     queryset = AyahTranslation.objects.all()
     serializer_class = AyahTranslationSerializer
@@ -216,3 +265,23 @@ class RecitationViewSet(viewsets.ModelViewSet):
         if reciter_id is not None:
             queryset = queryset.filter(reciter_account_id=reciter_id)
         return queryset
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        # Allow admin users to edit even if published
+        if instance.status == 'published' and not request.user.is_staff:
+            return Response({'detail': 'Published Recitation cannot be edited.'}, status=status.HTTP_403_FORBIDDEN)
+        status_value = request.data.get('status')
+        if status_value == 'pending_review':
+            # Count ayahs for this recitation's mushaf
+            ayah_count = Ayah.objects.filter(surah__mushaf=instance.mushaf).count()
+            ayah_translation_count = AyahTranslation.objects.filter(translation__mushaf=instance.mushaf).count()
+            if ayah_translation_count != ayah_count:
+                return Response({
+                    'detail': f'Recitation is incomplete: {ayah_translation_count} of {ayah_count} ayahs translated.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        return super().update(request, *args, partial=partial, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, partial=True, **kwargs)
