@@ -9,6 +9,7 @@ class Status(models.TextChoices):
     PUBLISHED = "published", "Published"
 
 class Mushaf(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mushafs')
     short_name = models.CharField(max_length=100)
     name = models.TextField()
@@ -26,6 +27,7 @@ class Surah(models.Model):
         ('madani', 'Madani'),
     ]
 
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='surahs')
     mushaf = models.ForeignKey(Mushaf, on_delete=models.CASCADE, related_name='surahs')
     name = models.CharField(max_length=50)
@@ -50,6 +52,7 @@ class Ayah(models.Model):
         ('none', 'None'),
     ]
 
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ayahs')
     surah = models.ForeignKey(Surah, on_delete=models.CASCADE, related_name='ayahs')
     number = models.IntegerField()
@@ -67,10 +70,10 @@ class Ayah(models.Model):
         return f"{self.surah.name} - {self.number}"
 
 class Word(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='words')
     ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='words')
     text = models.TextField()
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -78,6 +81,7 @@ class Word(models.Model):
         return self.text
 
 class Translation(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='translations')
     mushaf = models.ForeignKey(Mushaf, on_delete=models.CASCADE, related_name='translations')
     translator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='translated_works')
@@ -96,6 +100,7 @@ class Translation(models.Model):
         return f"{self.mushaf.name} - {self.language} by {self.translator.username}"
 
 class AyahTranslation(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ayah_translations')
     translation = models.ForeignKey(Translation, on_delete=models.CASCADE, related_name='ayah_translations')
     ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='translations')
@@ -111,6 +116,7 @@ class AyahTranslation(models.Model):
         return f"{self.translation.language} - {self.ayah}"
 
 class AyahBreaker(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ayah_breakers')
     ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='breakers')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_ayah_breakers', null=True, blank=True)
@@ -122,6 +128,7 @@ class AyahBreaker(models.Model):
         return f"{self.name} - {self.ayah}"
 
 class WordBreaker(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='word_breakers')
     word = models.ForeignKey(Word, on_delete=models.CASCADE, related_name='breakers')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_word_breakers', null=True, blank=True)
@@ -133,6 +140,7 @@ class WordBreaker(models.Model):
         return f"{self.name} - {self.word}"
 
 class Recitation(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recitations')
     mushaf = models.ForeignKey(Mushaf, on_delete=models.CASCADE, related_name='recitations')
     surah = models.ForeignKey(Surah, on_delete=models.CASCADE, related_name='recitations')
@@ -150,6 +158,7 @@ class Recitation(models.Model):
         return f"Recitation by {self.reciter_account.username} on {self.recitation_date}"
 
 class RecitationTimestamp(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     recitation = models.ForeignKey(Recitation, on_delete=models.CASCADE, related_name='timestamps')
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(null=True, blank=True)
