@@ -66,7 +66,7 @@ def load_translations(apps, schema_editor):
             mushaf_id=mushaf.id,
             translator_id=user.id,
             source=translation_data["source"],
-            approved=True,
+            status="published",
             language=translation_data["language"],
         )
         translation.save()

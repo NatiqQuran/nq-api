@@ -8,7 +8,7 @@ from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation
 class MushafSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mushaf
-        fields = ['id', 'short_name', 'name', 'source', 'status']
+        fields = ['uuid', 'short_name', 'name', 'source', 'status']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
@@ -27,7 +27,7 @@ class SurahSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Surah
-        fields = ['id', 'mushaf', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs']
+        fields = ['uuid', 'mushaf', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs']
         read_only_fields = ['creator']
 
     def get_number_of_ayahs(self, instance):
@@ -50,7 +50,7 @@ class SurahInAyahSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Surah
-        fields = ['id', 'names']
+        fields = ['uuid', 'names']
         read_only_fields = ['creator']
 
     def get_names(self, instance):
@@ -69,7 +69,7 @@ class AyahSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Ayah
-        fields = ['id', 'number', 'sajdah', 'text', 'breakers', 'bismillah', 'surah']
+        fields = ['uuid', 'number', 'sajdah', 'text', 'breakers', 'bismillah', 'surah']
         read_only_fields = ['creator']
     
     def get_surah(self, instance):
@@ -178,7 +178,7 @@ class AyahSerializer(serializers.ModelSerializer):
 class WordSerializer(serializers.ModelSerializer):
     class Meta:
         model = Word
-        fields = ['id', 'ayah_id', 'text']
+        fields = ['uuid', 'ayah_id', 'text']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
@@ -205,7 +205,7 @@ class SurahDetailSerializer(SurahSerializer):
 class TranslationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Translation
-        fields = ['id', 'mushaf', 'translator', 'language', 'release_date', 'source', 'status']
+        fields = ['uuid', 'mushaf', 'translator', 'language', 'release_date', 'source', 'status']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
@@ -215,7 +215,7 @@ class TranslationSerializer(serializers.ModelSerializer):
 class AyahTranslationSerializer(serializers.ModelSerializer):
     class Meta:
         model = AyahTranslation
-        fields = ['id', 'translation_id', 'ayah_id', 'text', 'bismillah']
+        fields = ['uuid', 'translation_id', 'ayah_id', 'text', 'bismillah']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
@@ -225,7 +225,7 @@ class AyahTranslationSerializer(serializers.ModelSerializer):
 class AyahBreakerSerializer(serializers.ModelSerializer):
     class Meta:
         model = AyahBreaker
-        fields = ['id', 'ayah_id', 'owner_id', 'name']
+        fields = ['uuid', 'ayah_id', 'owner_id', 'name']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
@@ -235,7 +235,7 @@ class AyahBreakerSerializer(serializers.ModelSerializer):
 class WordBreakerSerializer(serializers.ModelSerializer):
     class Meta:
         model = WordBreaker
-        fields = ['id', 'word_id', 'owner_id', 'name']
+        fields = ['uuid', 'word_id', 'owner_id', 'name']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
@@ -308,7 +308,7 @@ class RecitationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recitation
-        fields = ['id', 'mushaf', 'surah', 'status', 'reciter_account', 'recitation_date', 'recitation_location', 
+        fields = ['uuid', 'mushaf', 'surah', 'status', 'reciter_account', 'recitation_date', 'recitation_location', 
                  'duration', 'file', 'recitation_type', 'created_at', 'updated_at', 'words_timestamps', 'ayahs_timestamps']
         read_only_fields = ['creator']
 

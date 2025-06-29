@@ -22,6 +22,7 @@ class MushafViewSet(viewsets.ModelViewSet):
     limited_fields = {
         "status": ["published"]
     }
+    lookup_field = "uuid"
     
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
@@ -53,6 +54,7 @@ class SurahViewSet(viewsets.ModelViewSet):
     search_fields = ["name"]
     ordering_fields = ['created_at']
     pegination_class = None
+    lookup_field = "uuid"
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -93,6 +95,7 @@ class AyahViewSet(viewsets.ModelViewSet):
     search_fields = ["number", "text"]
     ordering_fields = ['created_at']
     pegination_class = None
+    lookup_field = "uuid"
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -132,6 +135,7 @@ class WordViewSet(viewsets.ModelViewSet):
     search_fields = ["text"]
     ordering_fields = ['created_at']
     pegination_class = None
+    lookup_field = "uuid"
     
     def get_queryset(self):
         queryset = Word.objects.all()
@@ -154,6 +158,7 @@ class TranslationViewSet(viewsets.ModelViewSet):
     limited_fields = {
         "status": ["published"]
     }
+    lookup_field = "uuid"
     
     def get_queryset(self):
         queryset = Translation.objects.all()
@@ -207,6 +212,7 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
     search_fields = ["text"]
     ordering_fields = ['created_at']
     pegination_class = None
+    lookup_field = "uuid"
     
     def get_queryset(self):
         queryset = AyahTranslation.objects.all()
@@ -253,6 +259,7 @@ class RecitationViewSet(viewsets.ModelViewSet):
     limited_fields = {
         "status": ["published"]
     }
+    lookup_field = "uuid"
 
     def get_queryset(self):
         queryset = Recitation.objects.all()
