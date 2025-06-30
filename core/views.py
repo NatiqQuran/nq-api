@@ -11,7 +11,8 @@ import os
 import magic
 import hashlib
 from django.conf import settings
-from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 class ErrorLogViewSet(viewsets.ModelViewSet):
     queryset = ErrorLog.objects.all()
@@ -74,6 +75,16 @@ MIME_TYPES = {
     "mp3": ["audio/mp3", "audio/mpeg"],
 }
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(name='subject', location=OpenApiParameter.QUERY, type=str,
+                        description='Subject of the file to be uploaded. Allowed subjects: recitations'),
+    ],
+    request=OpenApiTypes.BINARY,
+    operation_id='upload_file',
+    summary='Upload a file to S3 with subject-based categorization',
+    description='Uploads a file to S3 with public access, categorizing it based on the'
+)
 class FileUploadView(views.APIView):
     parser_classes = (MultiPartParser, )
     permission_classes = [permissions.IsAuthenticated]

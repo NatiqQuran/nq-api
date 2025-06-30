@@ -21,13 +21,15 @@ class SurahNameSerializer(serializers.Serializer):
     name_transliteration = serializers.CharField(required=False, allow_null=True)
 
 class SurahSerializer(serializers.ModelSerializer):
-    names = serializers.SerializerMethodField()
+    names = serializers.SerializerMethodField(read_only=True)
     mushaf = MushafSerializer(read_only=True)
-    number_of_ayahs = serializers.SerializerMethodField()
+    mushaf_uuid = serializers.UUIDField(write_only=True, required=True)
+    name = serializers.CharField(write_only=True, required=True)
+    number_of_ayahs = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Surah
-        fields = ['uuid', 'mushaf', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs']
+        fields = ['uuid', 'mushaf', 'mushaf_uuid', 'name', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs']
         read_only_fields = ['creator']
 
     def get_number_of_ayahs(self, instance):
@@ -42,6 +44,12 @@ class SurahSerializer(serializers.ModelSerializer):
         }]
 
     def create(self, validated_data):
+        mushaf_uuid = validated_data.pop('mushaf_uuid')
+        name = validated_data.pop('name')
+        from quran.models import Mushaf
+        mushaf = Mushaf.objects.get(uuid=mushaf_uuid)
+        validated_data['mushaf'] = mushaf
+        validated_data['name'] = name
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
 
@@ -243,7 +251,7 @@ class WordBreakerSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class AyahAddSerializer(serializers.Serializer):
-    surah_id = serializers.IntegerField()
+    surah_uuid = serializers.UUIDField()
     text = serializers.CharField()
     is_bismillah = serializers.BooleanField(default=False)
     bismillah_text = serializers.CharField(required=False, allow_null=True)
@@ -253,7 +261,7 @@ class AyahAddSerializer(serializers.Serializer):
         return {
             'id': instance.id,
             'number': instance.number,
-            'surah_id': instance.surah.id,
+            'surah_uuid': str(instance.surah.uuid),
             'is_bismillah': instance.is_bismillah,
             'bismillah_text': instance.bismillah_text,
             'sajdah': instance.sajdah
@@ -262,10 +270,10 @@ class AyahAddSerializer(serializers.Serializer):
     def create(self, validated_data):
         # Get the text and remove it from validated_data
         text = validated_data.pop('text')
-        surah_id = validated_data.pop('surah_id')
+        surah_uuid = validated_data.pop('surah_uuid')
         
-        # Get the surah
-        surah = Surah.objects.get(id=surah_id)
+        # Get the surah by uuid
+        surah = Surah.objects.get(uuid=surah_uuid)
         
         # Get the latest ayah number in this surah and increment it
         latest_ayah = Ayah.objects.filter(surah=surah).order_by('-number').first()

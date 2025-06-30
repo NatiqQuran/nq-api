@@ -6,12 +6,31 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
-from .serializers import ProfileSerializer, UserSerializer, GroupSerializer
+from .serializers import ProfileSerializer, UserSerializer, GroupSerializer, LoginSerializer
 from rest_framework.authtoken.serializers import AuthTokenSerializer
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 class LoginView(KnoxLoginView):
     permission_classes = (permissions.AllowAny,)
 
+    @extend_schema(
+        request=LoginSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=None,
+                description="Login successful, returns auth token."
+            ),
+            400: OpenApiResponse(description="Invalid credentials.")
+        },
+        description="Login with username and password. Returns Knox token.",
+        examples=[
+            OpenApiExample(
+                'Login Example',
+                value={"username": "testuser", "password": "yourpassword"},
+                request_only=True
+            )
+        ]
+    )
     def post(self, request, format=None):
         serializer = AuthTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -31,6 +50,31 @@ class AuthViewSet(viewsets.GenericViewSet):
     def get_queryset(self):
         return User.objects.all()  # Required for DRF to show in the API root
 
+    @extend_schema(
+        request=UserSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=None,
+                description="User registered successfully, returns user data and token."
+            ),
+            400: OpenApiResponse(description="Validation error.")
+        },
+        description="Register a new user with username, password, and email.",
+        examples=[
+            OpenApiExample(
+                'Register Example',
+                value={
+                    "username": "newuser",
+                    "password": "yourpassword",
+                    "password2": "yourpassword",
+                    "email": "newuser@example.com",
+                    "first_name": "New",
+                    "last_name": "User"
+                },
+                request_only=True
+            )
+        ]
+    )
     @action(methods=['post'], detail=False)
     def register(self, request):
         """
@@ -47,6 +91,16 @@ class AuthViewSet(viewsets.GenericViewSet):
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# Optionally, subclass Knox's LogoutView to add schema info
+from knox.views import LogoutView as KnoxLogoutView
+
+class LogoutView(KnoxLogoutView):
+    @extend_schema(
+        responses={204: OpenApiResponse(description="Logout successful.")},
+        description="Logout current user (invalidate token)."
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
 class UserViewSet(viewsets.ModelViewSet):
     """

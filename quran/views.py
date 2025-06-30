@@ -81,10 +81,8 @@ class SurahViewSet(viewsets.ModelViewSet):
 @extend_schema_view(
     list=extend_schema(
         parameters=[
-            OpenApiParameter("surah_id", 
-                    OpenApiTypes.NUMBER, 
-                    OpenApiParameter.QUERY)
-            ]
+            OpenApiParameter("surah_uuid", OpenApiTypes.UUID, OpenApiParameter.QUERY)
+        ]
     )
 )
 class AyahViewSet(viewsets.ModelViewSet):
@@ -99,11 +97,11 @@ class AyahViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        surah_id = self.request.query_params.get('surah_id', None)
+        surah_uuid = self.request.query_params.get('surah_uuid', None)
         
         # Apply surah filter if provided
-        if surah_id is not None:
-            queryset = queryset.filter(surah_id=surah_id)
+        if surah_uuid is not None:
+            queryset = queryset.filter(surah__uuid=surah_uuid)
             
         # Always prefetch words since we need them for both formats
         return queryset.prefetch_related('words')
