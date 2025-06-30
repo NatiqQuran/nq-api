@@ -21,14 +21,15 @@ class SurahNameSerializer(serializers.Serializer):
     name_transliteration = serializers.CharField(required=False, allow_null=True)
 
 class SurahSerializer(serializers.ModelSerializer):
-    names = serializers.SerializerMethodField()
+    names = serializers.SerializerMethodField(read_only=True)
     mushaf = MushafSerializer(read_only=True)
     mushaf_uuid = serializers.UUIDField(write_only=True, required=True)
-    number_of_ayahs = serializers.SerializerMethodField()
+    name = serializers.CharField(write_only=True, required=True)
+    number_of_ayahs = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Surah
-        fields = ['uuid', 'mushaf', 'mushaf_uuid', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs']
+        fields = ['uuid', 'mushaf', 'mushaf_uuid', 'name', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs']
         read_only_fields = ['creator']
 
     def get_number_of_ayahs(self, instance):
@@ -44,9 +45,11 @@ class SurahSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         mushaf_uuid = validated_data.pop('mushaf_uuid')
+        name = validated_data.pop('name')
         from quran.models import Mushaf
         mushaf = Mushaf.objects.get(uuid=mushaf_uuid)
         validated_data['mushaf'] = mushaf
+        validated_data['name'] = name
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
 
