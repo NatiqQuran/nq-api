@@ -14,7 +14,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 class MushafViewSet(viewsets.ModelViewSet):
     queryset = Mushaf.objects.all().order_by('short_name')
     serializer_class = MushafSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions, core_permissions.LimitedFieldEditPermission]
+    permission_classes = [
+        permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions,
+        core_permissions.LimitedFieldEditPermission
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["short_name", "name", "source"]
     ordering_fields = ['created_at']

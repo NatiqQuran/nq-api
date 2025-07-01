@@ -62,6 +62,14 @@ class PhraseTranslationViewSet(viewsets.ModelViewSet):
 
 
 class Storage(S3Boto3Storage):
+    """Storage object for s3
+    
+    Default location is uncategorized, and bucket name is
+    from settings.
+
+    Args:
+        S3Boto3Storage (S3Boto3Storage): Storage
+    """
     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
     default_acl = 'public-read'
     file_overwrite = False
