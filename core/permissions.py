@@ -23,7 +23,7 @@ class LimitedFieldEditPermission(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        if request.user.is_superuser:
+        if request.user.is_staff:
             return True
 
         for (k, v) in getattr(view, "limited_fields", {}).items():
