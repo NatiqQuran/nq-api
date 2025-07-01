@@ -23,13 +23,13 @@ class LimitedFieldEditPermission(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        if request.user.is_superuser:
+        if request.user.is_staff:
             return True
 
-        for (k, v) in view.limited_fields.items():
+        for (k, v) in getattr(view, "limited_fields", {}).items():
             d = request.data.get(k)
-            if d and d in v:
-                self.message = f"You don't have permission to set '{k}' field to '{d}'"
+            if d in v:
+                self.message = f"You are not permitted to set '{k}' field to '{d}'"
                 return False
 
         return True

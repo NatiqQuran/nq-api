@@ -14,7 +14,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 class MushafViewSet(viewsets.ModelViewSet):
     queryset = Mushaf.objects.all().order_by('short_name')
     serializer_class = MushafSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions, core_permissions.LimitedFieldEditPermission]
+    permission_classes = [
+        permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions,
+        core_permissions.LimitedFieldEditPermission
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["short_name", "name", "source"]
     ordering_fields = ['created_at']
@@ -137,9 +140,9 @@ class WordViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Word.objects.all()
-        ayah_id = self.request.query_params.get('ayah_id', None)
-        if ayah_id is not None:
-            queryset = queryset.filter(ayah_id=ayah_id)
+        ayah_uuid = self.request.query_params.get('ayah_uuid', None)
+        if ayah_uuid is not None:
+            queryset = queryset.filter(ayah__uuid=ayah_uuid)
         return queryset
 
     def perform_create(self, serializer):
@@ -160,14 +163,14 @@ class TranslationViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Translation.objects.all()
-        mushaf = self.request.query_params.get('mushaf_id', None)
+        mushaf_uuid = self.request.query_params.get('mushaf_uuid', None)
         language = self.request.query_params.get('language', None)
         
-        if mushaf is not None:
-            queryset = queryset.filter(mushaf__short_name=mushaf)
+        if mushaf_uuid is not None:
+            queryset = queryset.filter(mushaf__uuid=mushaf_uuid)
         if language is not None:
             queryset = queryset.filter(language=language)
-            
+        
         return queryset
 
     def perform_create(self, serializer):
@@ -194,13 +197,31 @@ class TranslationViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, partial=True, **kwargs)
 
-# TODO: FIX
 @extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+        ]
+    ),
+    create=extend_schema(
+        parameters=[
+            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+        ]
+    ),
+    partial_update=extend_schema(
+        parameters=[
+            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+        ]
+    ),
     update=extend_schema(
-    parameters=[
-        OpenApiParameter(name='translation_id', description='Translation ID', required=True, type=int),
-        OpenApiParameter(name='ayah_id', description='Ayah ID', required=True, type=int),
-    ])
+        parameters=[
+            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+        ]
+    )
 )
 class AyahTranslationViewSet(viewsets.ModelViewSet):
     queryset = AyahTranslation.objects.all()
@@ -215,15 +236,15 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = AyahTranslation.objects.all()
         
-        # Get translation and ayah IDs from URL parameters
-        translation_id = self.request.query_params.get('translation_id', None)
-        ayah_id = self.request.query_params.get('ayah_id', None)
+        # Get translation and ayah UUIDs from URL parameters
+        translation_uuid = self.request.query_params.get('translation_uuid', None)
+        ayah_uuid = self.request.query_params.get('ayah_uuid', None)
         
-        # Apply filters if IDs are provided
-        if translation_id:
-            queryset = queryset.filter(translation_id=translation_id)
-        if ayah_id:
-            queryset = queryset.filter(ayah_id=ayah_id)
+        # Apply filters if UUIDs are provided
+        if translation_uuid:
+            queryset = queryset.filter(translation__uuid=translation_uuid)
+        if ayah_uuid:
+            queryset = queryset.filter(ayah__uuid=ayah_uuid)
 
         return queryset
 
@@ -231,11 +252,11 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
     def create(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        translation_id = self.request.query_params.get('translation_id')
-        ayah_id = self.request.query_params.get('ayah_id')
+        translation_uuid = self.request.query_params.get('translation_uuid')
+        ayah_uuid = self.request.query_params.get('ayah_uuid')
         AyahTranslation.objects.update_or_create(
-            ayah_id=ayah_id, 
-            translation_id=translation_id,
+            ayah__uuid=ayah_uuid, 
+            translation__uuid=translation_uuid,
             creator_id=self.request.user.id, 
             defaults={
                 'text': serializer.validated_data['text'],
@@ -262,13 +283,13 @@ class RecitationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Recitation.objects.all()
         # Filter by mushaf if provided
-        mushaf_id = self.request.query_params.get('mushaf_id', None)
-        if mushaf_id is not None:
-            queryset = queryset.filter(mushaf_id=mushaf_id)
+        mushaf_uuid = self.request.query_params.get('mushaf_uuid', None)
+        if mushaf_uuid is not None:
+            queryset = queryset.filter(mushaf__uuid=mushaf_uuid)
         # Filter by reciter if provided
-        reciter_id = self.request.query_params.get('reciter_id', None)
-        if reciter_id is not None:
-            queryset = queryset.filter(reciter_account_id=reciter_id)
+        reciter_uuid = self.request.query_params.get('reciter_uuid', None)
+        if reciter_uuid is not None:
+            queryset = queryset.filter(reciter_account__uuid=reciter_uuid)
         return queryset
 
     def update(self, request, *args, **kwargs):
