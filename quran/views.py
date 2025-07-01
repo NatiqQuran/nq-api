@@ -194,11 +194,10 @@ class TranslationViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, partial=True, **kwargs)
 
-# TODO: FIX
-extend_schema(
+@extend_schema(
     parameters=[
-        OpenApiParameter(name='translation_uuid', description='Translation UUID', required=True, type=int),
-        OpenApiParameter(name='ayah_id', description='Ayah UUID', required=True, type=int),
+        OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+        OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
     ]
 )
 class AyahTranslationViewSet(viewsets.ModelViewSet):
