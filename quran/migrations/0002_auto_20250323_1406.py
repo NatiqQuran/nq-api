@@ -10,7 +10,7 @@ def load_quran(apps, schema_editor):
     Mushaf = apps.get_model("quran", "Mushaf")
     Ayah = apps.get_model("quran", "Ayah")
     Word = apps.get_model("quran", "Word")
-    User = apps.get_model("auth", "User")
+    User = apps.get_model("account", "CustomUser")
 
     user, _ = User.objects.get_or_create(username="curator")
 
@@ -46,7 +46,7 @@ def load_quran(apps, schema_editor):
 def load_translations(apps, schema_editor):
     Mushaf = apps.get_model("quran", "Mushaf")
     Translation = apps.get_model("quran", "Translation")
-    User = apps.get_model("auth", "User")
+    User = apps.get_model("account", "CustomUser")
     AyahTranslation = apps.get_model("quran", "AyahTranslation")
 
     user = User.objects.get(username="curator")

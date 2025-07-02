@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from account.models import CustomUser
 from core.models import File
 import uuid
 
@@ -10,7 +10,7 @@ class Status(models.TextChoices):
 
 class Mushaf(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mushafs')
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='mushafs')
     short_name = models.CharField(max_length=100)
     name = models.TextField()
     source = models.TextField(default="")
@@ -28,7 +28,7 @@ class Surah(models.Model):
     ]
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='surahs')
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='surahs')
     mushaf = models.ForeignKey(Mushaf, on_delete=models.CASCADE, related_name='surahs')
     name = models.CharField(max_length=50)
     number = models.IntegerField()
@@ -53,7 +53,7 @@ class Ayah(models.Model):
     ]
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ayahs')
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='ayahs')
     surah = models.ForeignKey(Surah, on_delete=models.CASCADE, related_name='ayahs')
     number = models.IntegerField()
     sajdah = models.CharField(max_length=20, choices=SAJDAH_CHOICES, default='none', null=True)
@@ -71,7 +71,7 @@ class Ayah(models.Model):
 
 class Word(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='words')
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='words')
     ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='words')
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -82,9 +82,9 @@ class Word(models.Model):
 
 class Translation(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='translations')
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='translations')
     mushaf = models.ForeignKey(Mushaf, on_delete=models.CASCADE, related_name='translations')
-    translator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='translated_works')
+    translator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='translated_works')
     language = models.CharField(max_length=5)  # ISO 639-1 language code
     release_date = models.DateField(blank=True, null=True)
     source = models.CharField(max_length=300, blank=True, null=True)
@@ -101,7 +101,7 @@ class Translation(models.Model):
 
 class AyahTranslation(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ayah_translations')
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='ayah_translations')
     translation = models.ForeignKey(Translation, on_delete=models.CASCADE, related_name='ayah_translations')
     ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='translations')
     text = models.TextField()
@@ -117,9 +117,9 @@ class AyahTranslation(models.Model):
 
 class AyahBreaker(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ayah_breakers')
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='ayah_breakers')
     ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='breakers')
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_ayah_breakers', null=True, blank=True)
+    owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='owned_ayah_breakers', null=True, blank=True)
     name = models.CharField(max_length=256)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -129,9 +129,9 @@ class AyahBreaker(models.Model):
 
 class WordBreaker(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='word_breakers')
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='word_breakers')
     word = models.ForeignKey(Word, on_delete=models.CASCADE, related_name='breakers')
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_word_breakers', null=True, blank=True)
+    owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='owned_word_breakers', null=True, blank=True)
     name = models.CharField(max_length=256)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -141,10 +141,10 @@ class WordBreaker(models.Model):
 
 class Recitation(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recitations')
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='recitations')
     mushaf = models.ForeignKey(Mushaf, on_delete=models.CASCADE, related_name='recitations')
     surah = models.ForeignKey(Surah, on_delete=models.CASCADE, related_name='recitations')
-    reciter_account = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recited_works')
+    reciter_account = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='recited_works')
     recitation_date = models.DateField()
     recitation_location = models.TextField()
     duration = models.DurationField()

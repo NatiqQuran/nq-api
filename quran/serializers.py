@@ -168,15 +168,10 @@ class AyahSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        # Remove null fields
-        if representation['breakers'] is None:
-            representation.pop('breakers')
-        if representation['sajdah'] is None:
-            representation.pop('sajdah')
-        if representation['bismillah'] is None:
-            representation.pop('bismillah')
-        if representation['surah'] is None:
-            representation.pop('surah')
+        # Remove null fields safely
+        for field in ['breakers', 'sajdah', 'bismillah', 'surah']:
+            if field in representation and representation[field] is None:
+                representation.pop(field)
         return representation
 
     def create(self, validated_data):
@@ -204,8 +199,15 @@ class AyahSerializerView(AyahSerializer):
     def get_mushaf(self, instance):
         return MushafSerializer(instance.surah.mushaf).data
 
+
+# Separate serializer for ayahs in surah
+class AyahInSurahSerializer(AyahSerializer):
+    class Meta(AyahSerializer.Meta):
+        fields = ['uuid', 'number', 'sajdah', 'is_bismillah', 'bismillah_text', 'text']
+        
+
 class SurahDetailSerializer(SurahSerializer):
-    ayahs = AyahSerializer(many=True, read_only=True)
+    ayahs = AyahInSurahSerializer(many=True, read_only=True)
     
     class Meta(SurahSerializer.Meta):
         fields = SurahSerializer.Meta.fields + ['ayahs']

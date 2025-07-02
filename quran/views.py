@@ -11,7 +11,20 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiPara
 from drf_spectacular.types import OpenApiTypes
 from django_filters.rest_framework import DjangoFilterBackend
 
+@extend_schema_view(
+    list=extend_schema(summary="List all Mushafs (Quranic manuscripts/editions)"),
+    retrieve=extend_schema(summary="Retrieve a specific Mushaf by UUID"),
+    create=extend_schema(summary="Create a new Mushaf record"),
+    update=extend_schema(summary="Update an existing Mushaf record"),
+    partial_update=extend_schema(summary="Partially update a Mushaf record"),
+    destroy=extend_schema(summary="Delete a Mushaf record")
+)
 class MushafViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Mushaf objects (Quranic manuscripts/editions).
+    Supports listing, creating, updating, and retrieving Mushaf records.
+    Enforces permissions and restricts editing of published Mushafs.
+    """
     queryset = Mushaf.objects.all().order_by('short_name')
     serializer_class = MushafSerializer
     permission_classes = [
@@ -50,7 +63,19 @@ class MushafViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, partial=True, **kwargs)
 
+@extend_schema_view(
+    list=extend_schema(summary="List all Surahs (Quran chapters)"),
+    retrieve=extend_schema(summary="Retrieve a specific Surah by UUID"),
+    create=extend_schema(summary="Create a new Surah record"),
+    update=extend_schema(summary="Update an existing Surah record"),
+    partial_update=extend_schema(summary="Partially update a Surah record"),
+    destroy=extend_schema(summary="Delete a Surah record")
+)
 class SurahViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Surah (chapter) objects of the Quran.
+    Allows filtering by Mushaf, searching by name, and auto-increments Surah number on creation.
+    """
     queryset = Surah.objects.all().order_by('number')
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -83,10 +108,16 @@ class SurahViewSet(viewsets.ModelViewSet):
 
 @extend_schema_view(
     list=extend_schema(
+        summary="List all Ayahs (Quran verses)",
         parameters=[
             OpenApiParameter("surah_uuid", OpenApiTypes.UUID, OpenApiParameter.QUERY)
         ]
-    )
+    ),
+    retrieve=extend_schema(summary="Retrieve a specific Ayah by UUID"),
+    create=extend_schema(summary="Create a new Ayah record"),
+    update=extend_schema(summary="Update an existing Ayah record"),
+    partial_update=extend_schema(summary="Partially update an Ayah record"),
+    destroy=extend_schema(summary="Delete an Ayah record")
 )
 class AyahViewSet(viewsets.ModelViewSet):
     queryset = Ayah.objects.all().order_by('surah__number', 'number')
@@ -128,7 +159,19 @@ class AyahViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
+@extend_schema_view(
+    list=extend_schema(summary="List all Words in Ayahs"),
+    retrieve=extend_schema(summary="Retrieve a specific Word by UUID"),
+    create=extend_schema(summary="Create a new Word record"),
+    update=extend_schema(summary="Update an existing Word record"),
+    partial_update=extend_schema(summary="Partially update a Word record"),
+    destroy=extend_schema(summary="Delete a Word record")
+)
 class WordViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Word objects (words within Ayahs).
+    Allows filtering by Ayah and searching by word text.
+    """
     queryset = Word.objects.all()
     serializer_class = WordSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
@@ -148,7 +191,19 @@ class WordViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
+@extend_schema_view(
+    list=extend_schema(summary="List all Quran Translations"),
+    retrieve=extend_schema(summary="Retrieve a specific Translation by UUID"),
+    create=extend_schema(summary="Create a new Translation record"),
+    update=extend_schema(summary="Update an existing Translation record"),
+    partial_update=extend_schema(summary="Partially update a Translation record"),
+    destroy=extend_schema(summary="Delete a Translation record")
+)
 class TranslationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Translation objects (Quran translations).
+    Supports filtering by Mushaf and language, and restricts editing of published translations.
+    """
     queryset = Translation.objects.all()
     serializer_class = TranslationSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions, core_permissions.LimitedFieldEditPermission]
@@ -199,31 +254,41 @@ class TranslationViewSet(viewsets.ModelViewSet):
 
 @extend_schema_view(
     list=extend_schema(
+        summary="List all Ayah Translations",
         parameters=[
             OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
             OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
         ]
     ),
+    retrieve=extend_schema(summary="Retrieve a specific Ayah Translation by UUID"),
     create=extend_schema(
-        parameters=[
-            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-        ]
-    ),
-    partial_update=extend_schema(
+        summary="Create a new Ayah Translation record",
         parameters=[
             OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
             OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
         ]
     ),
     update=extend_schema(
+        summary="Update an existing Ayah Translation record",
         parameters=[
             OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
             OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
         ]
-    )
+    ),
+    partial_update=extend_schema(
+        summary="Partially update an Ayah Translation record",
+        parameters=[
+            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+        ]
+    ),
+    destroy=extend_schema(summary="Delete an Ayah Translation record")
 )
 class AyahTranslationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for AyahTranslation objects (translations of individual Ayahs).
+    Allows filtering by translation or ayah, and supports upsert on create.
+    """
     queryset = AyahTranslation.objects.all()
     serializer_class = AyahTranslationSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
@@ -267,7 +332,19 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
+@extend_schema_view(
+    list=extend_schema(summary="List all Recitations (audio recordings)"),
+    retrieve=extend_schema(summary="Retrieve a specific Recitation by UUID"),
+    create=extend_schema(summary="Create a new Recitation record"),
+    update=extend_schema(summary="Update an existing Recitation record"),
+    partial_update=extend_schema(summary="Partially update a Recitation record"),
+    destroy=extend_schema(summary="Delete a Recitation record")
+)
 class RecitationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Recitation objects (audio recitations of the Quran).
+    Supports filtering by Mushaf and reciter, and restricts editing of published recitations.
+    """
     queryset = Recitation.objects.all()
     serializer_class = RecitationSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions, core_permissions.LimitedFieldEditPermission]

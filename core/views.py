@@ -13,25 +13,55 @@ import os
 import magic
 import hashlib
 from django.conf import settings
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view
 from drf_spectacular.types import OpenApiTypes
 
 
+@extend_schema_view(
+    list=extend_schema(summary="List all error logs"),
+    retrieve=extend_schema(summary="Retrieve a specific error log by ID"),
+    create=extend_schema(summary="Create a new error log entry"),
+    update=extend_schema(summary="Update an existing error log entry"),
+    partial_update=extend_schema(summary="Partially update an error log entry"),
+    destroy=extend_schema(summary="Delete an error log entry")
+)
 class ErrorLogViewSet(viewsets.ModelViewSet):
     queryset = ErrorLog.objects.all()
     serializer_class = ErrorLogSerializer
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
 
+@extend_schema_view(
+    list=extend_schema(summary="List all phrases"),
+    retrieve=extend_schema(summary="Retrieve a specific phrase by UUID"),
+    create=extend_schema(summary="Create a new phrase"),
+    update=extend_schema(summary="Update an existing phrase"),
+    partial_update=extend_schema(summary="Partially update a phrase"),
+    destroy=extend_schema(summary="Delete a phrase")
+)
 class PhraseViewSet(viewsets.ModelViewSet):
     queryset = Phrase.objects.all()
     serializer_class = PhraseSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    lookup_field = "uuid"
     # filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     # search_fields = ["recitation_date", "recitation_location", "recitation_type"]
     # ordering_fields = ['created_at', 'duration', 'recitation_date']
     # pegination_class = None
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='language',
+                location=OpenApiParameter.QUERY,
+                type=str,
+                required=True,
+                description="Language code for the translation (required)."
+            ),
+        ],
+        summary="Modify phrase translations",
+        description="Modify phrase translations for a given language. The 'language' query parameter is required."
+    )
     @action(detail=False, methods=['post'], serializer_class=PhraseModifySerializer)
     def modify(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -52,9 +82,17 @@ class PhraseViewSet(viewsets.ModelViewSet):
         return HttpResponse(content="Done", status=200)
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        serializer.save(creator=self.request.user)
 
 
+@extend_schema_view(
+    list=extend_schema(summary="List all phrase translations"),
+    retrieve=extend_schema(summary="Retrieve a specific phrase translation by ID"),
+    create=extend_schema(summary="Create a new phrase translation"),
+    update=extend_schema(summary="Update an existing phrase translation"),
+    partial_update=extend_schema(summary="Partially update a phrase translation"),
+    destroy=extend_schema(summary="Delete a phrase translation")
+)
 class PhraseTranslationViewSet(viewsets.ModelViewSet):
     queryset = PhraseTranslation.objects.all()
     serializer_class = PhraseTranslationSerializer

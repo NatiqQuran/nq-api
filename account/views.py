@@ -1,4 +1,5 @@
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group
+from .models import CustomUser
 from django.contrib.auth import login
 from rest_framework import permissions, viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
@@ -8,8 +9,11 @@ from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from .serializers import ProfileSerializer, UserSerializer, GroupSerializer, LoginSerializer
 from rest_framework.authtoken.serializers import AuthTokenSerializer
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view
 
+@extend_schema_view(
+    post=extend_schema(summary="Login with username and password to obtain a Knox token")
+)
 class LoginView(KnoxLoginView):
     permission_classes = (permissions.AllowAny,)
 
@@ -39,19 +43,15 @@ class LoginView(KnoxLoginView):
         return super(LoginView, self).post(request, format=None)
 
 class AuthViewSet(viewsets.GenericViewSet):
-    """
-    Authentication ViewSet for user registration.
-    
-    * /auth/register/ - Register a new user
-    """
     permission_classes = [AllowAny]
     serializer_class = UserSerializer
     
     def get_queryset(self):
-        return User.objects.all()  # Required for DRF to show in the API root
+        return CustomUser.objects.all()  # Required for DRF to show in the API root
 
     @extend_schema(
         request=UserSerializer,
+        summary="Register a new user account",
         responses={
             201: OpenApiResponse(
                 response=None,
@@ -102,29 +102,48 @@ class LogoutView(KnoxLogoutView):
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
+@extend_schema_view(
+    list=extend_schema(summary="List all users"),
+    retrieve=extend_schema(summary="Retrieve a specific user by ID"),
+    create=extend_schema(summary="Create a new user"),
+    update=extend_schema(summary="Update an existing user"),
+    partial_update=extend_schema(summary="Partially update a user"),
+    destroy=extend_schema(summary="Delete a user")
+)
 class UserViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows users to be viewed or edited.
-    """
-    queryset = User.objects.all().order_by('-date_joined')
+    queryset = CustomUser.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    lookup_field = "uuid"
 
 
+@extend_schema_view(
+    list=extend_schema(summary="List all groups"),
+    retrieve=extend_schema(summary="Retrieve a specific group by ID"),
+    create=extend_schema(summary="Create a new group"),
+    update=extend_schema(summary="Update an existing group"),
+    partial_update=extend_schema(summary="Partially update a group"),
+    destroy=extend_schema(summary="Delete a group")
+)
 class GroupViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
     queryset = Group.objects.all().order_by('name')
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
 # TODO: add remove account
+@extend_schema_view(
+    retrieve=extend_schema(summary="Retrieve the user's profile by uuid"),
+)
 class ProfileViewSet(viewsets.mixins.RetrieveModelMixin, viewsets.GenericViewSet):
-    queryset = User.objects.all()
+    queryset = CustomUser.objects.all()
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
+    lookup_field = "uuid"
 
+    @extend_schema(
+        summary="Get or update the current user's profile",
+        description="GET: Retrieve the current user's profile. POST: Update the current user's profile information.",
+    )
     @action(detail=False, methods=['get', 'post'], serializer_class=ProfileSerializer)
     def me(self, request):
         if request.method == "GET":
@@ -144,4 +163,4 @@ class ProfileViewSet(viewsets.mixins.RetrieveModelMixin, viewsets.GenericViewSet
             if last_name:
                 user.last_name = last_name
             user.save()
-            return Response(serializer.data,status=200)
+            return Response(serializer.data, status=200)
