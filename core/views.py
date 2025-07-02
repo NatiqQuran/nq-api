@@ -27,11 +27,25 @@ class PhraseViewSet(viewsets.ModelViewSet):
     queryset = Phrase.objects.all()
     serializer_class = PhraseSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    lookup_field = "uuid"
     # filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     # search_fields = ["recitation_date", "recitation_location", "recitation_type"]
     # ordering_fields = ['created_at', 'duration', 'recitation_date']
     # pegination_class = None
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='language',
+                location=OpenApiParameter.QUERY,
+                type=str,
+                required=True,
+                description="Language code for the translation (required)."
+            ),
+        ],
+        summary="Modify phrase translations",
+        description="Modify phrase translations for a given language. The 'language' query parameter is required."
+    )
     @action(detail=False, methods=['post'], serializer_class=PhraseModifySerializer)
     def modify(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -52,7 +66,7 @@ class PhraseViewSet(viewsets.ModelViewSet):
         return HttpResponse(content="Done", status=200)
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        serializer.save(creator=self.request.user)
 
 
 class PhraseTranslationViewSet(viewsets.ModelViewSet):

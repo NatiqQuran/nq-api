@@ -30,6 +30,7 @@ class ErrorLog(models.Model):
 
 class Phrase(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phrases')
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     phrase = models.TextField(unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -42,6 +43,7 @@ class Phrase(models.Model):
 
 class PhraseTranslation(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='phrase_translation')
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     phrase = models.ForeignKey(Phrase, models.DO_NOTHING, related_name='translations')
     text = models.TextField()
     language = models.CharField(max_length=3)
