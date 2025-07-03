@@ -28,7 +28,8 @@ class MushafViewSet(viewsets.ModelViewSet):
     queryset = Mushaf.objects.all().order_by('short_name')
     serializer_class = MushafSerializer
     permission_classes = [
-        permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions,
+        core_permissions.IsCreatorOrReadOnly,
+        permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions,
         core_permissions.LimitedFieldEditPermission
     ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -77,12 +78,26 @@ class SurahViewSet(viewsets.ModelViewSet):
     Allows filtering by Mushaf, searching by name, and auto-increments Surah number on creation.
     """
     queryset = Surah.objects.all().order_by('number')
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    permission_classes = [
+        core_permissions.IsCreatorOrReadOnly,
+        core_permissions.IsCreatorOfParentOrReadOnly,
+        permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
     ordering_fields = ['created_at']
     pegination_class = None
     lookup_field = "uuid"
+
+    def get_parent_for_permission(self, request):
+        """
+        For create requests, return the Mushaf object to check ownership.
+        This is used by IsCreatorOrReadOnly permission.
+        """
+        mushaf_uuid = request.data.get('mushaf_uuid', None)
+        if mushaf_uuid:
+            return Mushaf.objects.filter(uuid=mushaf_uuid).first()
+        return None
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -122,7 +137,22 @@ class SurahViewSet(viewsets.ModelViewSet):
 class AyahViewSet(viewsets.ModelViewSet):
     queryset = Ayah.objects.all().order_by('surah__number', 'number')
     serializer_class = AyahSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    permission_classes = [
+        core_permissions.IsCreatorOrReadOnly,
+        core_permissions.IsCreatorOfParentOrReadOnly,
+        permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions
+    ]
+
+    def get_parent_for_permission(self, request):
+        """
+        For create requests, return the Surah object to check ownership.
+        This is used by IsCreatorOrReadOnly permission.
+        """
+        surah_uuid = request.data.get('surah_uuid', None)
+        if surah_uuid:
+            return Surah.objects.filter(uuid=surah_uuid).first()
+        return None
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["number", "text"]
     ordering_fields = ['created_at']
@@ -174,7 +204,20 @@ class WordViewSet(viewsets.ModelViewSet):
     """
     queryset = Word.objects.all()
     serializer_class = WordSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    permission_classes = [
+        core_permissions.IsCreatorOrReadOnly,
+        core_permissions.IsCreatorOfParentOrReadOnly,
+        permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions
+    ]
+    def get_parent_for_permission(self, request):
+        """
+        For create requests, return the Ayah object to check ownership.
+        This is used by IsCreatorOrReadOnly permission.
+        """
+        ayah_uuid = request.data.get('ayah_uuid', None)
+        if ayah_uuid:
+            return Ayah.objects.filter(uuid=ayah_uuid).first()
+        return None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["text"]
     ordering_fields = ['created_at']
@@ -206,7 +249,11 @@ class TranslationViewSet(viewsets.ModelViewSet):
     """
     queryset = Translation.objects.all()
     serializer_class = TranslationSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions, core_permissions.LimitedFieldEditPermission]
+    permission_classes = [
+        core_permissions.IsCreatorOrReadOnly,
+        permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions,
+        core_permissions.LimitedFieldEditPermission
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["text"]
     ordering_fields = ['created_at']
@@ -291,7 +338,20 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
     """
     queryset = AyahTranslation.objects.all()
     serializer_class = AyahTranslationSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions]
+    permission_classes = [
+        core_permissions.IsCreatorOrReadOnly,
+        core_permissions.IsCreatorOfParentOrReadOnly,
+        permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions
+    ]
+    def get_parent_for_permission(self, request):
+        """
+        For create requests, return the Translation object to check ownership.
+        This is used by IsCreatorOrReadOnly permission.
+        """
+        translation_uuid = request.data.get('translation_uuid', None)
+        if translation_uuid:
+            return Translation.objects.filter(uuid=translation_uuid).first()
+        return None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["text"]
     ordering_fields = ['created_at']
@@ -347,7 +407,11 @@ class RecitationViewSet(viewsets.ModelViewSet):
     """
     queryset = Recitation.objects.all()
     serializer_class = RecitationSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly or permissions.DjangoModelPermissions, core_permissions.LimitedFieldEditPermission]
+    permission_classes = [
+        core_permissions.IsCreatorOrReadOnly,
+        permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions,
+        core_permissions.LimitedFieldEditPermission
+    ]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["recitation_date", "recitation_location", "recitation_type"]
     ordering_fields = ['created_at', 'duration', 'recitation_date']
