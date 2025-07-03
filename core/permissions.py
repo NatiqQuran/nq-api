@@ -34,3 +34,39 @@ class LimitedFieldEditPermission(permissions.BasePermission):
 
         return True
 
+
+class IsCreatorOrReadOnly(permissions.BasePermission):
+    """
+    Custom permission to only allow creators of an object to edit it, and allow creation only if the user owns the parent object.
+    The view should provide:
+      - a `get_parent_for_permission(request)` method for create (POST) requests
+      - a `parent_field` attribute or `get_parent(obj, request)` method for object-level checks
+    """
+
+    def has_permission(self, request, view):
+        # Allow safe methods
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # For create, check parent ownership using view's get_parent_for_permission
+        if request.method == "POST":
+            get_parent = getattr(view, "get_parent_for_permission", None)
+            if callable(get_parent):
+                parent = get_parent(request)
+            else:
+                parent = None
+            if parent and hasattr(parent, "creator"):
+                return parent.creator == request.user
+            # If no parent or no creator, deny
+            return False
+
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        # Read permissions are allowed to any request,
+        # so we'll always allow GET, HEAD or OPTIONS requests.
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # Write permissions are only allowed to the creator of the object
+        return hasattr(obj, "creator") and obj.creator == request.user
