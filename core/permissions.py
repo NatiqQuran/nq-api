@@ -5,9 +5,9 @@ class LimitedFieldEditPermission(permissions.BasePermission):
     Prevents non-admin users from setting certain fields to restricted values.
 
     The view class should define a `limited_fields` attribute, e.g.:
-        limited_fields = {
-            "status": ["published"]
-        }
+    limited_fields = {
+        "status": ["published"]
+    }
     If a non-admin user attempts to set a restricted value, permission is denied.
     """
     message = ""
