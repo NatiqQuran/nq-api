@@ -230,6 +230,24 @@ class FileUploadView(views.APIView):
 class UploadSubjectsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        summary="List allowed upload subjects",
+        description="Returns a list of allowed subjects and their file types for file uploads.",
+        responses={200: OpenApiTypes.OBJECT},
+        examples=[
+            {
+                "summary": "Allowed upload subjects",
+                "description": "Example response showing allowed subjects and their file types.",
+                "value": [
+                    {
+                        "subject": "recitations",
+                        "type": "mp3",
+                        "description": "Audio recitations of Quran"
+                    }
+                ]
+            }
+        ]
+    )
     def get(self, request, format=None):
         subjects_array = [
             {"subject": key, **value}
