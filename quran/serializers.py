@@ -333,6 +333,8 @@ class AyahAddSerializer(serializers.Serializer):
         return ayah
 
 class RecitationSerializer(serializers.ModelSerializer):
+    mushaf_uuid = serializers.UUIDField()
+    surah_uuid = serializers.UUIDField()
     file = serializers.DictField(write_only=True)
     words_timestamps = serializers.ListField(
         child=serializers.DictField(
@@ -345,9 +347,79 @@ class RecitationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recitation
-        fields = ['uuid', 'mushaf', 'surah', 'status', 'reciter_account', 'recitation_date', 'recitation_location', 
+        fields = ['uuid', 'mushaf_uuid', 'surah_uuid', 'status', 'reciter_account', 'recitation_date', 'recitation_location', 
                  'duration', 'file', 'recitation_type', 'created_at', 'updated_at', 'words_timestamps', 'ayahs_timestamps']
         read_only_fields = ['creator']
+
+    def to_internal_value(self, data):
+        mushaf_uuid = data.get('mushaf_uuid')
+        surah_uuid = data.get('surah_uuid')
+        ret = super().to_internal_value(data)
+        ret['mushaf_uuid'] = mushaf_uuid
+        ret['surah_uuid'] = surah_uuid
+        return ret
+
+    def create(self, validated_data):
+        from quran.models import Mushaf, Surah
+        file_data = validated_data.pop('file', None)
+        mushaf_uuid = validated_data.pop('mushaf_uuid')
+        surah_uuid = validated_data.pop('surah_uuid')
+        mushaf = Mushaf.objects.get(uuid=mushaf_uuid)
+        surah = Surah.objects.get(uuid=surah_uuid)
+        validated_data['mushaf'] = mushaf
+        validated_data['surah'] = surah
+        if file_data and 's3_uuid' in file_data:
+            from quran.models import File
+            try:
+                file = File.objects.get(s3_uuid=file_data['s3_uuid'])
+                validated_data['file_id'] = file.id
+            except File.DoesNotExist:
+                raise serializers.ValidationError({"file": "File with this s3_uuid does not exist"})
+        validated_data['creator'] = self.context['request'].user
+        timestamps_data = validated_data.pop('timestamps', None)
+        recitation = super().create(validated_data)
+        if timestamps_data:
+            from quran.models import Word, RecitationTimestamp
+            from datetime import datetime
+            for timestamp in timestamps_data:
+                try:
+                    start_time = datetime.strptime(timestamp['start'], "%H:%M:%S.%f")
+                    end_time = datetime.strptime(timestamp['end'], "%H:%M:%S.%f") if timestamp.get('end') else None
+                    word = None
+                    if timestamp.get('word_uuid'):
+                        try:
+                            word = Word.objects.get(uuid=timestamp['word_uuid'])
+                        except Word.DoesNotExist:
+                            continue
+                    RecitationTimestamp.objects.create(
+                        recitation=recitation,
+                        start_time=start_time,
+                        end_time=end_time,
+                        word=word
+                    )
+                except (ValueError, KeyError):
+                    continue
+        return recitation
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Always show UUIDs
+        representation['mushaf_uuid'] = str(instance.mushaf.uuid)
+        representation['surah_uuid'] = str(instance.surah.uuid)
+
+        # Dynamic timestamp field logic
+        action = self.context.get('view').action if self.context.get('view') else None
+        request = self.context.get('request')
+        if request and request.query_params.get('words_timestamps', 'true').lower() == 'false' and action == "retrieve":
+            representation.pop('words_timestamps', None)
+        else:
+            representation['words_timestamps'] = self.get_words_timestamps(instance)
+
+        if action == 'list':
+            representation.pop('words_timestamps', None)
+            representation.pop('ayahs_timestamps', None)
+
+        return representation
 
     def get_ayahs_timestamps(self, obj):
         # Get all timestamps ordered by start time
@@ -368,23 +440,6 @@ class RecitationSerializer(serializers.ModelSerializer):
             if timestamp.word_id in ayahs_first_words_as_id:
                 ayah_start_times.append(start_time)
         return ayah_start_times
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        
-        action = self.context.get('view').action
-        # Check if timestamps should be included in response
-        request = self.context.get('request')
-        if request and request.query_params.get('words_timestamps', 'true').lower() == 'false' and action == "retrieve":
-            representation.pop('words_timestamps', None)
-        else:
-            representation['words_timestamps'] = self.get_words_timestamps(instance)
-        
-        if action == 'list':
-            representation.pop('words_timestamps', None)
-            representation.pop('ayahs_timestamps', None)
-            
-        return representation
 
     def validate_timestamps(self, value):
         if not value:
@@ -407,49 +462,3 @@ class RecitationSerializer(serializers.ModelSerializer):
                 'word_uuid': str(timestamp.word.uuid) if timestamp.word else None
             })
         return timestamps
-
-    def create(self, validated_data):
-        file_data = validated_data.pop('file', None)
-        
-        # Get file from s3_uuid
-        if file_data and 's3_uuid' in file_data:
-            try:
-                file = File.objects.get(s3_uuid=file_data['s3_uuid'])
-                validated_data['file_id'] = file.id
-            except File.DoesNotExist:
-                raise serializers.ValidationError({"file": "File with this s3_uuid does not exist"})
-        
-        validated_data['creator'] = self.context['request'].user
-        
-        # Remove timestamps from validated_data as it's not a model field
-        timestamps_data = validated_data.pop('timestamps', None)
-        
-        # Create the recitation
-        recitation = super().create(validated_data)
-        
-        # Create timestamps if provided
-        if timestamps_data:
-            for timestamp in timestamps_data:
-                try:
-                    start_time = datetime.strptime(timestamp['start'], "%H:%M:%S.%f")
-                    end_time = datetime.strptime(timestamp['end'], "%H:%M:%S.%f") if timestamp.get('end') else None
-                    
-                    # Get word if word_uuid is provided
-                    word = None
-                    if timestamp.get('word_uuid'):
-                        try:
-                            word = Word.objects.get(uuid=timestamp['word_uuid'])
-                        except Word.DoesNotExist:
-                            continue
-                    
-                    # Create timestamp
-                    RecitationTimestamp.objects.create(
-                        recitation=recitation,
-                        start_time=start_time,
-                        end_time=end_time,
-                        word=word
-                    )
-                except (ValueError, KeyError) as e:
-                    continue
-        
-        return recitation
