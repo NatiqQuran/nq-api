@@ -214,21 +214,28 @@ class SurahDetailSerializer(SurahSerializer):
         fields = SurahSerializer.Meta.fields + ['ayahs']
 
 class TranslationSerializer(serializers.ModelSerializer):
-    mushaf_uuid = serializers.UUIDField(source='mushaf.uuid', read_only=True)
-    translator_uuid = serializers.UUIDField(source='translator.uuid', read_only=True)
-    mushaf_uuid_input = serializers.UUIDField(write_only=True, required=True)
-    translator_uuid_input = serializers.UUIDField(write_only=True, required=True)
+    mushaf_uuid = serializers.UUIDField()
+    translator_uuid = serializers.UUIDField()
 
     class Meta:
         model = Translation
-        fields = ['uuid', 'mushaf_uuid', 'translator_uuid', 'mushaf_uuid_input', 'translator_uuid_input', 'language', 'release_date', 'source', 'status']
-        read_only_fields = ['creator', 'mushaf_uuid', 'translator_uuid']
+        fields = ['uuid', 'mushaf_uuid', 'translator_uuid', 'language', 'release_date', 'source', 'status']
+        read_only_fields = ['creator']
+
+    def to_internal_value(self, data):
+        # Extract UUIDs for input
+        mushaf_uuid = data.get('mushaf_uuid')
+        translator_uuid = data.get('translator_uuid')
+        ret = super().to_internal_value(data)
+        ret['mushaf_uuid'] = mushaf_uuid
+        ret['translator_uuid'] = translator_uuid
+        return ret
 
     def create(self, validated_data):
         from quran.models import Mushaf
         from account.models import CustomUser
-        mushaf_uuid = validated_data.pop('mushaf_uuid_input')
-        translator_uuid = validated_data.pop('translator_uuid_input')
+        mushaf_uuid = validated_data.pop('mushaf_uuid')
+        translator_uuid = validated_data.pop('translator_uuid')
         mushaf = Mushaf.objects.get(uuid=mushaf_uuid)
         translator = CustomUser.objects.get(uuid=translator_uuid)
         validated_data['mushaf'] = mushaf
@@ -238,9 +245,8 @@ class TranslationSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        # Remove input-only fields from output
-        rep.pop('mushaf_uuid_input', None)
-        rep.pop('translator_uuid_input', None)
+        rep['mushaf_uuid'] = str(instance.mushaf.uuid)
+        rep['translator_uuid'] = str(instance.translator.uuid)
         return rep
 
 class AyahTranslationSerializer(serializers.ModelSerializer):
