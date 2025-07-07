@@ -13,8 +13,9 @@ import os
 import magic
 import hashlib
 from django.conf import settings
-from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view
+from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view, OpenApiExample, inline_serializer
 from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
 
 
 @extend_schema_view(
@@ -233,19 +234,27 @@ class UploadSubjectsView(views.APIView):
     @extend_schema(
         summary="List allowed upload subjects",
         description="Returns a list of allowed subjects and their file types for file uploads.",
-        responses={200: OpenApiTypes.OBJECT},
-        examples=[
-            {
-                "summary": "Allowed upload subjects",
-                "description": "Example response showing allowed subjects and their file types.",
-                "value": [
-                    {
-                        "subject": "recitations",
-                        "type": "mp3",
-                        "description": "Audio recitations of Quran"
-                    }
-                ]
+        responses=inline_serializer(
+            name="UploadSubjectListResponse",
+            many=True,
+            fields={
+                "subject": serializers.CharField(),
+                "type": serializers.CharField(),
+                "description": serializers.CharField(),
             }
+        ),
+        examples=[
+            OpenApiExample(
+                "Allowed upload subjects",
+                value={
+                    "subject": "recitations",
+                    "type": "mp3",
+                    "description": "Audio recitations of Quran"
+                },
+                summary="Allowed upload subjects",
+                description="Example response showing allowed subjects and their file types.",
+                response_only=True,
+            )
         ]
     )
     def get(self, request, format=None):

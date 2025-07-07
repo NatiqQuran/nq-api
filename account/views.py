@@ -104,7 +104,7 @@ class LogoutView(KnoxLogoutView):
 
 @extend_schema_view(
     list=extend_schema(summary="List all users"),
-    retrieve=extend_schema(summary="Retrieve a specific user by ID"),
+    retrieve=extend_schema(summary="Retrieve a specific user by UUID"),
     create=extend_schema(summary="Create a new user"),
     update=extend_schema(summary="Update an existing user"),
     partial_update=extend_schema(summary="Partially update a user"),
