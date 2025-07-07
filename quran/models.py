@@ -11,7 +11,7 @@ class Status(models.TextChoices):
 class Mushaf(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='mushafs')
-    short_name = models.CharField(max_length=100)
+    short_name = models.CharField(max_length=100, unique=True)
     name = models.TextField()
     source = models.TextField(default="")
     status = models.CharField(max_length=50, choices=Status.choices, default=Status.DRAFT)
