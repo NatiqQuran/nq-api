@@ -4,6 +4,7 @@ from datetime import datetime
 from django.conf import settings
 
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, AyahBreaker, WordBreaker, Recitation, File, RecitationTimestamp, Status
+from account.models import CustomUser
 
 class MushafSerializer(serializers.ModelSerializer):
     class Meta:
@@ -213,14 +214,34 @@ class SurahDetailSerializer(SurahSerializer):
         fields = SurahSerializer.Meta.fields + ['ayahs']
 
 class TranslationSerializer(serializers.ModelSerializer):
+    mushaf_uuid = serializers.UUIDField(source='mushaf.uuid', read_only=True)
+    translator_uuid = serializers.UUIDField(source='translator.uuid', read_only=True)
+    mushaf_uuid_input = serializers.UUIDField(write_only=True, required=True)
+    translator_uuid_input = serializers.UUIDField(write_only=True, required=True)
+
     class Meta:
         model = Translation
-        fields = ['uuid', 'mushaf', 'translator', 'language', 'release_date', 'source', 'status']
-        read_only_fields = ['creator']
+        fields = ['uuid', 'mushaf_uuid', 'translator_uuid', 'mushaf_uuid_input', 'translator_uuid_input', 'language', 'release_date', 'source', 'status']
+        read_only_fields = ['creator', 'mushaf_uuid', 'translator_uuid']
 
     def create(self, validated_data):
+        from quran.models import Mushaf
+        from account.models import CustomUser
+        mushaf_uuid = validated_data.pop('mushaf_uuid_input')
+        translator_uuid = validated_data.pop('translator_uuid_input')
+        mushaf = Mushaf.objects.get(uuid=mushaf_uuid)
+        translator = CustomUser.objects.get(uuid=translator_uuid)
+        validated_data['mushaf'] = mushaf
+        validated_data['translator'] = translator
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        # Remove input-only fields from output
+        rep.pop('mushaf_uuid_input', None)
+        rep.pop('translator_uuid_input', None)
+        return rep
 
 class AyahTranslationSerializer(serializers.ModelSerializer):
     class Meta:
