@@ -65,7 +65,18 @@ class MushafViewSet(viewsets.ModelViewSet):
         return self.update(request, *args, partial=True, **kwargs)
 
 @extend_schema_view(
-    list=extend_schema(summary="List all Surahs (Quran chapters)"),
+    list=extend_schema(
+        summary="List all Surahs (Quran chapters)",
+        parameters=[
+            OpenApiParameter(
+                name="mushaf",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Short name of the Mushaf to filter Surahs by."
+            )
+        ]
+    ),
     retrieve=extend_schema(summary="Retrieve a specific Surah by UUID"),
     create=extend_schema(summary="Create a new Surah record"),
     update=extend_schema(summary="Update an existing Surah record"),
@@ -190,9 +201,31 @@ class AyahViewSet(viewsets.ModelViewSet):
         serializer.save(creator=self.request.user)
 
 @extend_schema_view(
-    list=extend_schema(summary="List all Words in Ayahs"),
+    list=extend_schema(
+        summary="List all Words in Ayahs",
+        parameters=[
+            OpenApiParameter(
+                name="ayah_uuid",
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="UUID of the Ayah to filter Words by."
+            )
+        ]
+    ),
     retrieve=extend_schema(summary="Retrieve a specific Word by UUID"),
-    create=extend_schema(summary="Create a new Word record"),
+    create=extend_schema(
+        summary="Create a new Word record",
+        parameters=[
+            OpenApiParameter(
+                name="ayah_uuid",
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="UUID of the Ayah to associate the new Word with (if ayah_id is not provided in the body)."
+            )
+        ]
+    ),
     update=extend_schema(summary="Update an existing Word record"),
     partial_update=extend_schema(summary="Partially update a Word record"),
     destroy=extend_schema(summary="Delete a Word record")
@@ -231,11 +264,41 @@ class WordViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(ayah__uuid=ayah_uuid)
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        if not data.get('ayah_id'):
+            ayah_uuid = request.query_params.get('ayah_uuid')
+            if ayah_uuid:
+                data['ayah_id'] = ayah_uuid
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
 @extend_schema_view(
-    list=extend_schema(summary="List all Quran Translations"),
+    list=extend_schema(
+        summary="List all Quran Translations",
+        parameters=[
+            OpenApiParameter(
+                name="mushaf_uuid",
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="UUID of the Mushaf to filter Translations by."
+            ),
+            OpenApiParameter(
+                name="language",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Language code to filter Translations by."
+            )
+        ]
+    ),
     retrieve=extend_schema(summary="Retrieve a specific Translation by UUID"),
     create=extend_schema(summary="Create a new Translation record"),
     update=extend_schema(summary="Update an existing Translation record"),
@@ -393,7 +456,25 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
         serializer.save(creator=self.request.user)
 
 @extend_schema_view(
-    list=extend_schema(summary="List all Recitations (audio recordings)"),
+    list=extend_schema(
+        summary="List all Recitations (audio recordings)",
+        parameters=[
+            OpenApiParameter(
+                name="mushaf_uuid",
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="UUID of the Mushaf to filter Recitations by."
+            ),
+            OpenApiParameter(
+                name="reciter_uuid",
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="UUID of the Reciter to filter Recitations by."
+            )
+        ]
+    ),
     retrieve=extend_schema(summary="Retrieve a specific Recitation by UUID"),
     create=extend_schema(summary="Create a new Recitation record"),
     update=extend_schema(summary="Update an existing Recitation record"),
