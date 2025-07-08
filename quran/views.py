@@ -11,6 +11,9 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiPara
 from drf_spectacular.types import OpenApiTypes
 from django_filters.rest_framework import DjangoFilterBackend
 from core.pagination import CustomPageNumberPagination
+from rest_framework.decorators import action
+import json
+from rest_framework.parsers import MultiPartParser, FormParser
 
 @extend_schema_view(
     list=extend_schema(summary="List all Mushafs (Quranic manuscripts/editions)"),
@@ -64,6 +67,68 @@ class MushafViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, partial=True, **kwargs)
+
+    @extend_schema(
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "file": {"type": "string", "format": "binary", "description": "JSON file containing the Mushaf data"}
+                },
+                "required": ["file"]
+            }
+        },
+        summary="Import a Mushaf from a JSON file upload"
+    )
+    @action(detail=False, methods=['post'], url_path='import', parser_classes=[MultiPartParser, FormParser])
+    def import_mushaf(self, request):
+        """
+        Import a Mushaf from an uploaded JSON file.
+        Expects a file field in the multipart/form-data.
+        """
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'detail': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            quran_data = json.load(file)
+            user = request.user
+            mushaf_data = quran_data["mushaf"]
+            mushaf = Mushaf.objects.create(
+                creator_id=user.id,
+                name=mushaf_data["name"],
+                short_name=mushaf_data["short_name"],
+                source=mushaf_data["source"]
+            )
+            ayahs = []
+            words = []
+            surah_objs = []
+            surah_number_to_obj = {}
+            for surah_data in quran_data["surahs"]:
+                surah = mushaf.surahs.create(
+                    creator_id=user.id,
+                    number=surah_data["number"],
+                    name=surah_data["name"],
+                    period=surah_data["period"]
+                )
+                surah_objs.append(surah)
+                surah_number_to_obj[surah.number] = surah
+                for ayah in surah_data["ayahs"]:
+                    ayah_obj = Ayah(
+                        creator_id=user.id,
+                        surah=surah,
+                        number=ayah["number"],
+                        sajdah=ayah["sajdah"],
+                        is_bismillah=ayah["is_bismillah"],
+                        bismillah_text=ayah["bismillah_text"],
+                    )
+                    ayahs.append(ayah_obj)
+                    for word in ayah["words"]:
+                        words.append(Word(ayah=ayah_obj, text=word["text"], creator_id=user.id))
+            Ayah.objects.bulk_create(ayahs)
+            Word.objects.bulk_create(words)
+            return Response({'detail': f'Mushaf {mushaf.name} imported successfully.'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema_view(
     list=extend_schema(
@@ -362,6 +427,57 @@ class TranslationViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, partial=True, **kwargs)
+
+    @extend_schema(
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "file": {"type": "string", "format": "binary", "description": "JSON file containing the Translation data"}
+                },
+                "required": ["file"]
+            }
+        },
+        summary="Import a Translation from a JSON file upload"
+    )
+    @action(detail=False, methods=['post'], url_path='import', parser_classes=[MultiPartParser, FormParser])
+    def import_translation(self, request):
+        """
+        Import a Translation from an uploaded JSON file.
+        Expects a file field in the multipart/form-data.
+        """
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'detail': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            translation_data = json.load(file)
+            user = request.user
+            # Get or create the user for the translator
+            translator, _ = user.__class__.objects.get_or_create(username=translation_data["translator_username"])
+            mushaf = Mushaf.objects.get(short_name=translation_data["mushaf"])
+            translation = Translation.objects.create(
+                creator_id=user.id,
+                mushaf_id=mushaf.id,
+                translator_id=translator.id,
+                source=translation_data["source"],
+                status="published",
+                language=translation_data["language"],
+            )
+            ayah_translations = []
+            first_ayah = translation_data["surahs"][0]["ayah_translations"][0]['text'] if translation_data["surahs"] and translation_data["surahs"][0]["ayah_translations"] else ""
+            for surah in translation_data["surahs"]:
+                for ayah in surah["ayah_translations"]:
+                    ayah_translations.append(AyahTranslation(
+                        creator_id=user.id,
+                        translation_id=translation.id,
+                        ayah_id=ayah["number"],
+                        text=ayah["text"],
+                        bismillah=first_ayah,
+                    ))
+            AyahTranslation.objects.bulk_create(ayah_translations)
+            return Response({'detail': f'Translation {translation.id} imported successfully.'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema_view(
     list=extend_schema(
