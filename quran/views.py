@@ -10,6 +10,7 @@ from core import permissions as core_permissions
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from django_filters.rest_framework import DjangoFilterBackend
+from core.pagination import CustomPageNumberPagination
 
 @extend_schema_view(
     list=extend_schema(summary="List all Mushafs (Quranic manuscripts/editions)"),
@@ -35,7 +36,7 @@ class MushafViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["short_name", "name", "source"]
     ordering_fields = ['created_at']
-    pegination_class = None
+    pegination_class = CustomPageNumberPagination
     limited_fields = {
         "status": ["published"]
     }
@@ -97,7 +98,7 @@ class SurahViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
     ordering_fields = ['created_at']
-    pegination_class = None
+    pegination_class = CustomPageNumberPagination
     lookup_field = "uuid"
 
     def get_parent_for_permission(self, request):
