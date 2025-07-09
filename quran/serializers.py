@@ -250,14 +250,30 @@ class TranslationSerializer(serializers.ModelSerializer):
         return rep
 
 class AyahTranslationSerializer(serializers.ModelSerializer):
+    translation_uuid = serializers.UUIDField(write_only=True)
+    ayah_uuid = serializers.UUIDField(write_only=True)
+
     class Meta:
         model = AyahTranslation
-        fields = ['uuid', 'translation_id', 'ayah_id', 'text', 'bismillah']
+        fields = ['uuid', 'translation_uuid', 'ayah_uuid', 'text', 'bismillah']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
+        from quran.models import Translation, Ayah
+        translation_uuid = validated_data.pop('translation_uuid')
+        ayah_uuid = validated_data.pop('ayah_uuid')
+        translation = Translation.objects.get(uuid=translation_uuid)
+        ayah = Ayah.objects.get(uuid=ayah_uuid)
+        validated_data['translation'] = translation
+        validated_data['ayah'] = ayah
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['translation_uuid'] = str(instance.translation.uuid)
+        rep['ayah_uuid'] = str(instance.ayah.uuid)
+        return rep
 
 class AyahBreakerSerializer(serializers.ModelSerializer):
     class Meta:
