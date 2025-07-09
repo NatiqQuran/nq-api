@@ -180,14 +180,25 @@ class AyahSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class WordSerializer(serializers.ModelSerializer):
+    ayah_uuid = serializers.UUIDField(write_only=True)
+
     class Meta:
         model = Word
-        fields = ['uuid', 'ayah_id', 'text']
+        fields = ['uuid', 'ayah_uuid', 'text']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
+        from quran.models import Ayah
+        ayah_uuid = validated_data.pop('ayah_uuid')
+        ayah = Ayah.objects.get(uuid=ayah_uuid)
+        validated_data['ayah'] = ayah
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['ayah_uuid'] = str(instance.ayah.uuid)
+        return rep
 
 class AyahSerializerView(AyahSerializer):
     surah = SurahInAyahSerializer(read_only=True)

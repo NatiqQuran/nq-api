@@ -6,6 +6,7 @@ from core import views as core_views
 from django.urls import path, include
 from knox import views as knox_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from debug_toolbar.toolbar import debug_toolbar_urls
 
 router = routers.DefaultRouter()
 router.register(r'users', account_views.UserViewSet)
@@ -35,4 +36,4 @@ urlpatterns = [
     path('auth/logoutall/', knox_views.LogoutAllView.as_view(), name='knox_logoutall'),
     path('upload/', core_views.FileUploadView.as_view()),
     path('upload/subjects/', core_views.UploadSubjectsView.as_view()),
-]
+] + debug_toolbar_urls()
