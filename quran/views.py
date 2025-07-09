@@ -11,6 +11,9 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiPara
 from drf_spectacular.types import OpenApiTypes
 from django_filters.rest_framework import DjangoFilterBackend
 from core.pagination import CustomPageNumberPagination
+from rest_framework.decorators import action
+import json
+from rest_framework.parsers import MultiPartParser, FormParser
 
 @extend_schema_view(
     list=extend_schema(summary="List all Mushafs (Quranic manuscripts/editions)"),
@@ -36,12 +39,19 @@ class MushafViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["short_name", "name", "source"]
     ordering_fields = ['created_at']
-    pegination_class = CustomPageNumberPagination
+    pagination_class = CustomPageNumberPagination  # Fixed typo
     limited_fields = {
         "status": ["published"]
     }
     lookup_field = "uuid"
     
+    def get_queryset(self):
+        # Optimize: Only fetch fields needed for the list action
+        if getattr(self, 'action', None) == 'list':
+            return Mushaf.objects.only('uuid', 'short_name', 'name', 'source', 'status').order_by('short_name')
+        # For retrieve and others, fetch all fields
+        return Mushaf.objects.all().order_by('short_name')
+
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
@@ -64,6 +74,68 @@ class MushafViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, partial=True, **kwargs)
+
+    @extend_schema(
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "file": {"type": "string", "format": "binary", "description": "JSON file containing the Mushaf data"}
+                },
+                "required": ["file"]
+            }
+        },
+        summary="Import a Mushaf from a JSON file upload"
+    )
+    @action(detail=False, methods=['post'], url_path='import', parser_classes=[MultiPartParser, FormParser])
+    def import_mushaf(self, request):
+        """
+        Import a Mushaf from an uploaded JSON file.
+        Expects a file field in the multipart/form-data.
+        """
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'detail': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            quran_data = json.load(file)
+            user = request.user
+            mushaf_data = quran_data["mushaf"]
+            mushaf = Mushaf.objects.create(
+                creator_id=user.id,
+                name=mushaf_data["name"],
+                short_name=mushaf_data["short_name"],
+                source=mushaf_data["source"]
+            )
+            ayahs = []
+            words = []
+            surah_objs = []
+            surah_number_to_obj = {}
+            for surah_data in quran_data["surahs"]:
+                surah = mushaf.surahs.create(
+                    creator_id=user.id,
+                    number=surah_data["number"],
+                    name=surah_data["name"],
+                    period=surah_data["period"]
+                )
+                surah_objs.append(surah)
+                surah_number_to_obj[surah.number] = surah
+                for ayah in surah_data["ayahs"]:
+                    ayah_obj = Ayah(
+                        creator_id=user.id,
+                        surah=surah,
+                        number=ayah["number"],
+                        sajdah=ayah["sajdah"],
+                        is_bismillah=ayah["is_bismillah"],
+                        bismillah_text=ayah["bismillah_text"],
+                    )
+                    ayahs.append(ayah_obj)
+                    for word in ayah["words"]:
+                        words.append(Word(ayah=ayah_obj, text=word["text"], creator_id=user.id))
+            Ayah.objects.bulk_create(ayahs)
+            Word.objects.bulk_create(words)
+            return Response({'detail': f'Mushaf {mushaf.name} imported successfully.'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema_view(
     list=extend_schema(
@@ -98,7 +170,7 @@ class SurahViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
     ordering_fields = ['created_at']
-    pegination_class = CustomPageNumberPagination
+    pagination_class = CustomPageNumberPagination
     lookup_field = "uuid"
 
     def get_parent_for_permission(self, request):
@@ -117,9 +189,14 @@ class SurahViewSet(viewsets.ModelViewSet):
         return SurahSerializer
     
     def get_queryset(self):
+        surah_fields = [
+            'uuid', 'mushaf', 'name', 'number', 'period', 'name_pronunciation', 'name_translation', 'name_transliteration', 'search_terms', 'creator'
+        ]
         queryset = Surah.objects.all()
         if self.action == 'retrieve':
-            queryset = queryset.prefetch_related('ayahs__words')
+            queryset = queryset.select_related('mushaf').prefetch_related('ayahs__words').only(*surah_fields)
+        else:
+            queryset = queryset.select_related('mushaf').only(*surah_fields)
         mushaf_short_name = self.request.query_params.get('mushaf', None)
         if mushaf_short_name is not None:
             queryset = queryset.filter(mushaf__short_name=mushaf_short_name)
@@ -129,7 +206,7 @@ class SurahViewSet(viewsets.ModelViewSet):
         # Get the last surah number
         last_surah = Surah.objects.order_by('-number').first()
         next_number = 1 if last_surah is None else last_surah.number + 1
-        
+
         # Save the surah with the next number
         serializer.save(creator=self.request.user, number=next_number)
 
@@ -168,19 +245,22 @@ class AyahViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["number", "text"]
     ordering_fields = ['created_at']
-    pegination_class = None
+    pagination_class = CustomPageNumberPagination
     lookup_field = "uuid"
 
     def get_queryset(self):
+        ayah_fields = [
+            'uuid', 'surah', 'number', 'sajdah', 'is_bismillah', 'bismillah_text', 'creator'
+        ]
         queryset = super().get_queryset()
+        if self.action == 'retrieve':
+            queryset = queryset.select_related('surah', 'surah__mushaf').prefetch_related('words').only(*ayah_fields)
+        else:
+            queryset = queryset.select_related('surah').prefetch_related('words').only(*ayah_fields)
         surah_uuid = self.request.query_params.get('surah_uuid', None)
-        
-        # Apply surah filter if provided
         if surah_uuid is not None:
             queryset = queryset.filter(surah__uuid=surah_uuid)
-            
-        # Always prefetch words since we need them for both formats
-        return queryset.prefetch_related('words')
+        return queryset
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -255,11 +335,14 @@ class WordViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["text"]
     ordering_fields = ['created_at']
-    pegination_class = None
+    pagination_class = CustomPageNumberPagination
     lookup_field = "uuid"
     
     def get_queryset(self):
-        queryset = Word.objects.all()
+        word_fields = [
+            'uuid', 'ayah', 'text', 'creator'
+        ]
+        queryset = Word.objects.select_related('ayah').only(*word_fields)
         ayah_uuid = self.request.query_params.get('ayah_uuid', None)
         if ayah_uuid is not None:
             queryset = queryset.filter(ayah__uuid=ayah_uuid)
@@ -321,22 +404,23 @@ class TranslationViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["text"]
     ordering_fields = ['created_at']
-    pegination_class = None
+    pagination_class = CustomPageNumberPagination
     limited_fields = {
         "status": ["published"]
     }
     lookup_field = "uuid"
     
     def get_queryset(self):
-        queryset = Translation.objects.all()
+        translation_fields = [
+            'uuid', 'mushaf', 'translator', 'language', 'release_date', 'source', 'status', 'creator'
+        ]
+        queryset = Translation.objects.select_related('mushaf', 'translator').only(*translation_fields)
         mushaf_uuid = self.request.query_params.get('mushaf_uuid', None)
         language = self.request.query_params.get('language', None)
-        
         if mushaf_uuid is not None:
             queryset = queryset.filter(mushaf__uuid=mushaf_uuid)
         if language is not None:
             queryset = queryset.filter(language=language)
-        
         return queryset
 
     def perform_create(self, serializer):
@@ -362,6 +446,57 @@ class TranslationViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, partial=True, **kwargs)
+
+    @extend_schema(
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "file": {"type": "string", "format": "binary", "description": "JSON file containing the Translation data"}
+                },
+                "required": ["file"]
+            }
+        },
+        summary="Import a Translation from a JSON file upload"
+    )
+    @action(detail=False, methods=['post'], url_path='import', parser_classes=[MultiPartParser, FormParser])
+    def import_translation(self, request):
+        """
+        Import a Translation from an uploaded JSON file.
+        Expects a file field in the multipart/form-data.
+        """
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'detail': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            translation_data = json.load(file)
+            user = request.user
+            # Get or create the user for the translator
+            translator, _ = user.__class__.objects.get_or_create(username=translation_data["translator_username"])
+            mushaf = Mushaf.objects.get(short_name=translation_data["mushaf"])
+            translation = Translation.objects.create(
+                creator_id=user.id,
+                mushaf_id=mushaf.id,
+                translator_id=translator.id,
+                source=translation_data["source"],
+                status="published",
+                language=translation_data["language"],
+            )
+            ayah_translations = []
+            first_ayah = translation_data["surahs"][0]["ayah_translations"][0]['text'] if translation_data["surahs"] and translation_data["surahs"][0]["ayah_translations"] else ""
+            for surah in translation_data["surahs"]:
+                for ayah in surah["ayah_translations"]:
+                    ayah_translations.append(AyahTranslation(
+                        creator_id=user.id,
+                        translation_id=translation.id,
+                        ayah_id=ayah["number"],
+                        text=ayah["text"],
+                        bismillah=first_ayah,
+                    ))
+            AyahTranslation.objects.bulk_create(ayah_translations)
+            return Response({'detail': f'Translation {translation.id} imported successfully.'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema_view(
     list=extend_schema(
@@ -419,22 +554,20 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["text"]
     ordering_fields = ['created_at']
-    pegination_class = None
+    pagination_class = CustomPageNumberPagination
     lookup_field = "uuid"
     
     def get_queryset(self):
-        queryset = AyahTranslation.objects.all()
-        
-        # Get translation and ayah UUIDs from URL parameters
+        ayah_translation_fields = [
+            'uuid', 'translation', 'ayah', 'text', 'bismillah', 'creator'
+        ]
+        queryset = AyahTranslation.objects.select_related('translation', 'ayah').only(*ayah_translation_fields)
         translation_uuid = self.request.query_params.get('translation_uuid', None)
         ayah_uuid = self.request.query_params.get('ayah_uuid', None)
-        
-        # Apply filters if UUIDs are provided
         if translation_uuid:
             queryset = queryset.filter(translation__uuid=translation_uuid)
         if ayah_uuid:
             queryset = queryset.filter(ayah__uuid=ayah_uuid)
-
         return queryset
 
     
@@ -497,14 +630,17 @@ class RecitationViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["recitation_date", "recitation_location", "recitation_type"]
     ordering_fields = ['created_at', 'duration', 'recitation_date']
-    pegination_class = None
+    pagination_class = CustomPageNumberPagination
     limited_fields = {
         "status": ["published"]
     }
     lookup_field = "uuid"
 
     def get_queryset(self):
-        queryset = Recitation.objects.all()
+        recitation_fields = [
+            'uuid', 'mushaf', 'surah', 'reciter_account', 'recitation_date', 'recitation_location', 'duration', 'file', 'recitation_type', 'status', 'creator'
+        ]
+        queryset = Recitation.objects.select_related('mushaf', 'surah', 'reciter_account', 'file').only(*recitation_fields)
         # Filter by mushaf if provided
         mushaf_uuid = self.request.query_params.get('mushaf_uuid', None)
         if mushaf_uuid is not None:
@@ -513,6 +649,8 @@ class RecitationViewSet(viewsets.ModelViewSet):
         reciter_uuid = self.request.query_params.get('reciter_uuid', None)
         if reciter_uuid is not None:
             queryset = queryset.filter(reciter_account__uuid=reciter_uuid)
+        if self.action == 'retrieve':
+            queryset = queryset.prefetch_related('timestamps')
         return queryset
 
     def update(self, request, *args, **kwargs):
