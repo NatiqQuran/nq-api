@@ -164,7 +164,7 @@ class FileUploadView(views.APIView):
             sha256_hash.update(chunk)
         return sha256_hash.hexdigest()
 
-    def put(self, request, format=None):
+    def post(self, request, format=None):
         file_obj = request.FILES['file']
         original_filename = file_obj.name
 
