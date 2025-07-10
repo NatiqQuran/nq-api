@@ -6,29 +6,44 @@
 
 **A comprehensive open-source Quran API providing easy access to Quranic content**
 
+• [🌐 Website](https://natiq.net/) • [🛠️ Developer Portal](https://developer.natiq.net) • [📖 Test api in browser](https://api.natiq.net) • [📦 SDK](https://github.com/NatiqQuran/nq-sdk) • [🐛 Issues](https://github.com/NatiqQuran/nq-api/issues)
+
 [![API Status](https://img.shields.io/badge/API-Active-brightgreen)](https://github.com/NatiqQuran/nq-api)
- [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 [![Contributors](https://img.shields.io/github/contributors/NatiqQuran/nq-api)](https://github.com/NatiqQuran/nq-api/graphs/contributors)
 [![Stars](https://img.shields.io/github/stars/NatiqQuran/nq-api?style=social)](https://github.com/NatiqQuran/nq-api/stargazers)
 
-[🌐 Website](https://natiq.net/) • [🛠️ Developer Portal](https://developer.natiq.net) • [📦 SDK](https://github.com/NatiqQuran/nq-sdk) • [📖 Documentation](#api-documentation) • [🐛 Issues](https://github.com/NatiqQuran/nq-api/issues) • [💬 Discussions](https://github.com/NatiqQuran/nq-api/discussions)
-
 </div>
 
-##  Description
+---
+
+## 📑 Table of Contents
+
+- [Description](#description)
+  - [Key Features](#key-features)
+  - [Developer Tools](#-developer-tools)
+  - [Official SDK](#-official-sdk)
+- [API Endpoints](#api-endpoints)
+- [Project Structure](#-project-structure)
+- [Install/Deploy Options](#installdeploy-options)
+  - [With Docker](#with-docker)
+
+---
+
+## Description
 
 **Natiq Quran API** is a powerful, open-source RESTful API designed to provide developers with seamless access to the Holy Quran's content—including full Arabic text, multilingual translations, and audio recitations.
 
 This API is at the heart of the **Natiq ecosystem**, powering various digital Islamic tools such as:
 
-* ✅ **Natiq SDKs** for effortless integration into your mobile, web, or backend apps
-* 🌍 **[natiq.net](https://natiq.net)** — our fully-featured platform built on top of this API
-* ⚙️ Conversion and content tools to help you extend and customize Quranic data
-* 📱 Frontend apps using **Next.js** and **PWA** technologies
+- ✅ **Natiq SDKs** for effortless integration into your mobile, web, or backend apps
+- 🌍 **[natiq.net](https://natiq.net)** — our fully-featured platform built on top of this API
+- ⚙️ Conversion and content tools to help you extend and customize Quranic data
+- 📱 Frontend apps using **Next.js** and **PWA** technologies
 
 Whether you're building an educational platform, a personal Quran app, or integrating spiritual content into your existing products, `nq-api` provides a fast, developer-friendly, and scalable foundation.
 
-If you're looking to get started quickly without hosting the API yourself, consider using our SDK or ready-to-use hosted services at [natiq.net](https://natiq.net). But if you want full control, continue below to self-host it easily.
+> If you're looking to get started quickly, consider using our **[nq-sdk](https://github.com/NatiqQuran/nq-sdk)** or ready-to-use hosted services at **[api.natiq.net](https://api.natiq.net).**
 
 ### Key Features
 
@@ -36,58 +51,173 @@ If you're looking to get started quickly without hosting the API yourself, consi
 - 🌍 **Multi-language Support** - Translations in multiple languages
 - 🔊 **Audio Integration** - Links to recitation files
 - 📖 **Tafsir Support** - Commentary and explanations
-- 📖 **Word-by-Word Data** - Get detailed information for each word in an Ayah 
+- 📖 **Word-by-Word Data** - Get detailed information for each word in an Ayah
 - ⚡ **High Performance** - Fast response times with optimized data structure
 - 🔓 **Open Source** - Free to use and contribute
 - 📱 **Developer Friendly** - Simple REST endpoints with JSON responses
 - 🛡️ **Reliable** - Stable API with consistent uptime
 
----
-## 📑 Table of Contents
+### 🛠️ Developer Tools
 
-* [API Endpoints](#api-endpoints)
-* [Key Features](#key-features)
----
+**[developer.natiq.net](https://developer.natiq.net)** - Test all endpoints directly in your browser!
+
+- 🎯 **Zero Setup Required** - Start testing immediately
+- 🔍 **Live API Testing** - Interactive playground for all endpoints
+- 📖 **Real-time Documentation** - See responses as you explore
+- 💡 **Code Examples** - Copy-paste ready code snippets
+- 🔧 **Request Builder** - Visual interface for API calls
+
+### 📦 Official SDK
+
+**[nq-sdk](https://github.com/NatiqQuran/nq-sdk)** - Official SDK for faster development
+
+- ⚡ **Quick Integration** - Get started in minutes, not hours
+- 🔄 **Auto-completion** - Full TypeScript support
 
 ## API Endpoints
 
 The following are the main API endpoints available:
 
--   `/users/`: User management.
--   `/groups/`: Group management.
--   `/mushafs/`: Mushaf (Quran version) information.
--   `/surahs/`: List of Surahs.
--   `/ayahs/`: List of Ayahs.
--   `/words/`: List of words.
--   `/translations/`: Available translations.
--   `/ayah-translations/`: Ayah translations.
--   `/recitations/`: Recitation information.
--   `/auth/`: Authentication endpoints.
--   `/profile/`: User profiles.
--   `/phrases/`: Quranic phrases.
+- `/users/`: User management.
+- `/groups/`: Group management.
+- `/mushafs/`: Mushaf (Quran version) information.
+- `/surahs/`: List of Surahs.
+- `/ayahs/`: List of Ayahs.
+- `/words/`: List of words.
+- `/translations/`: Available translations.
+- `/ayah-translations/`: Ayah translations.
+- `/recitations/`: Recitation information.
+- `/auth/`: Authentication endpoints.
+- `/profile/`: User profiles.
+- `/phrases/`: Quranic phrases.
 
 ## Project Structure
 
 ```
 nq-api/
-├── account/         # User management app
-├── api/             # Core API configuration and routing
-├── core/            # Core functionalities
-├── data/            # Data files
-├── quran/           # Quran-related app (Surahs, Ayahs, etc.)
-├── .dockerignore
-├── .gitignore
-├── docker-compose.yaml
-├── Dockerfile
-├── entrypoint.prod.sh
-├── install.sh
-├── LICENSE
-├── manage.py
-├── nginx.conf
-├── README.md
-└── requirements.txt
+├── 📁 account/         # User management app
+├── 📁 api/             # Core API configuration and routing
+├── 📁 core/            # Core functionalities
+├── 📁 data/            # Data files
+├── 📁 quran/           # Quran-related app (Surahs, Ayahs, etc.)
+├── 📄 .dockerignore
+├── 📄 .gitignore
+├── 📄 Dockerfile       # Docker image configuration
+├── 📄 LICENSE          # project license
+├── 📄 README.md         # This file
+├── 📄 docker-compose.yaml # Docker orchestration
+├── 📄 entrypoint.prod.sh
+├── 📄 manage.py         # Django management script
+├── 📄 nginx.conf        # Django management script
+└── 📄 requirements.txt  # Python dependencies
 ```
 
-## Installation & Setup
+## Install/Deploy Options
 
-### With Dokcer
+### With Docker
+
+---
+
+#### 🔹 Step 1 – Update your system
+
+```bash
+sudo apt update
+```
+
+---
+
+#### 🔹 Step 2 – Install Docker
+
+If Docker is not already installed, you can install it with the official script:
+
+```bash
+curl -fsSL https://get.docker.com | sh
+```
+
+You can verify the installation with:
+
+```bash
+docker --version
+```
+
+---
+
+#### 🔹 Step 3 – Create the project folder
+
+```bash
+mkdir -p nq-api
+cd nq-api
+```
+
+---
+
+#### 🔹 Step 4 – Download required files
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/NatiqQuran/nq-api/refs/heads/main/docker-compose.yaml -o docker-compose.yaml
+curl -fsSL https://raw.githubusercontent.com/NatiqQuran/nq-api/refs/heads/main/nginx.conf -o nginx.conf
+```
+
+---
+
+#### 🔹 Step 5 – Review your docker-compose.yaml
+
+Make sure the following values are properly set inside the `environment:` section under the `api` service:
+
+* `SECRET_KEY`: Generate one using:
+
+```bash
+cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 40 | head -n 1
+```
+
+* `DJANGO_ALLOWED_HOSTS`: Get your public IP:
+
+```bash
+curl -s https://api.ipify.org
+```
+
+You can now edit the file and insert these values as shown below:
+
+```yaml
+api:
+    image: natiqquran/nq-api:main 
+```
+
+```yaml
+environment:
+  SECRET_KEY: your-generated-secret
+  DJANGO_ALLOWED_HOSTS: your-ip-address
+
+```
+
+Open the file with:
+
+```bash
+nano docker-compose.yaml
+```
+
+Or use any other editor you prefer.
+
+---
+
+#### 🔹 Step 6 – Run the containers
+
+From inside the `nq-api` folder:
+
+```bash
+docker compose up -d
+```
+
+---
+
+#### ✅ Done!
+
+After a few seconds, the API should be up and running.
+
+You can now access it at:
+
+```
+http://<your-server-ip>
+```
+
+Replace `<your-server-ip>` with your actual server IP or Domain address .

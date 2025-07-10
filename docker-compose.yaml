@@ -16,7 +16,7 @@ services:
       - "5432:5432"
 
   api:
-    build: .
+    image: .
     container_name: nq-api
     ports:
       - "8001:80"
