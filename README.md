@@ -8,8 +8,10 @@
 
 • [🌐 Website](https://natiq.net/) • [🛠️ Developer Portal](https://developer.natiq.net) • [📖 Test api in browser](https://api.natiq.net) • [📦 SDK](https://github.com/NatiqQuran/nq-sdk) • [🐛 Issues](https://github.com/NatiqQuran/nq-api/issues)
 
-[![API Status](https://img.shields.io/badge/API-Active-brightgreen)](https://github.com/NatiqQuran/nq-api)
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+[![Django CI](https://github.com/NatiqQuran/nq-api/actions/workflows/django.yml/badge.svg)](https://github.com/NatiqQuran/nq-api/actions/workflows/django.yml)
+[![Docker Image CI](https://github.com/NatiqQuran/nq-api/actions/workflows/docker-image.yml/badge.svg)](https://github.com/NatiqQuran/nq-api/actions/workflows/docker-image.yml)
+[![Docker Publish](https://github.com/NatiqQuran/nq-api/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/NatiqQuran/nq-api/actions/workflows/docker-publish.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Contributors](https://img.shields.io/github/contributors/NatiqQuran/nq-api)](https://github.com/NatiqQuran/nq-api/graphs/contributors)
 [![Stars](https://img.shields.io/github/stars/NatiqQuran/nq-api?style=social)](https://github.com/NatiqQuran/nq-api/stargazers)
 
@@ -24,7 +26,7 @@
   - [Developer Tools](#-developer-tools)
   - [Official SDK](#-official-sdk)
 - [API Endpoints](#api-endpoints)
-- [Project Structure](#-project-structure)
+- [Project Structure](#%EF%B8%8F-developer-tools)
 - [Install/Deploy Options](#installdeploy-options)
   - [With Docker](#with-docker)
 
