@@ -12,8 +12,8 @@ class ErrorLogSerializer(serializers.ModelSerializer):
 class PhraseTranslationSerializer(serializers.ModelSerializer):
     class Meta:
         model = PhraseTranslation
-        fields = ['id', 'phrase', 'text', 'language']
-        read_only_fields = ['creator']
+        fields = ['uuid', 'phrase', 'text', 'language']
+        read_only_fields = ['creator', 'uuid']
         
     def create(self, validated_data):
         validated_data['creator'] = self.context['request'].user
@@ -23,8 +23,8 @@ class PhraseTranslationSerializer(serializers.ModelSerializer):
 class PhraseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Phrase
-        fields = ['id', 'phrase',]
-        read_only_fields = ['creator']
+        fields = ['uuid', 'phrase']
+        read_only_fields = ['creator', 'uuid']
 
     def create(self, validated_data):
         validated_data['creator'] = self.context['request'].user
@@ -32,6 +32,15 @@ class PhraseSerializer(serializers.ModelSerializer):
 
 class PhraseModifySerializer(serializers.Serializer):
     phrases = serializers.DictField(child=serializers.CharField(), required=True)
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        language = None
+        if request:
+            language = request.query_params.get('language')
+        if not language:
+            raise serializers.ValidationError({"language": "This query parameter is required."})
+        return attrs
 
     def create(self, validated_data):
         validated_data['creator'] = self.context['request'].user

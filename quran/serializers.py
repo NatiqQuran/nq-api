@@ -4,6 +4,7 @@ from datetime import datetime
 from django.conf import settings
 
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, AyahBreaker, WordBreaker, Recitation, File, RecitationTimestamp, Status
+from account.models import CustomUser
 
 class MushafSerializer(serializers.ModelSerializer):
     class Meta:
@@ -21,13 +22,15 @@ class SurahNameSerializer(serializers.Serializer):
     name_transliteration = serializers.CharField(required=False, allow_null=True)
 
 class SurahSerializer(serializers.ModelSerializer):
-    names = serializers.SerializerMethodField()
+    names = serializers.SerializerMethodField(read_only=True)
     mushaf = MushafSerializer(read_only=True)
-    number_of_ayahs = serializers.SerializerMethodField()
+    mushaf_uuid = serializers.UUIDField(write_only=True, required=True)
+    name = serializers.CharField(write_only=True, required=True)
+    number_of_ayahs = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Surah
-        fields = ['uuid', 'mushaf', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs']
+        fields = ['uuid', 'mushaf', 'mushaf_uuid', 'name', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs']
         read_only_fields = ['creator']
 
     def get_number_of_ayahs(self, instance):
@@ -42,6 +45,12 @@ class SurahSerializer(serializers.ModelSerializer):
         }]
 
     def create(self, validated_data):
+        mushaf_uuid = validated_data.pop('mushaf_uuid')
+        name = validated_data.pop('name')
+        from quran.models import Mushaf
+        mushaf = Mushaf.objects.get(uuid=mushaf_uuid)
+        validated_data['mushaf'] = mushaf
+        validated_data['name'] = name
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
 
@@ -160,15 +169,10 @@ class AyahSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        # Remove null fields
-        if representation['breakers'] is None:
-            representation.pop('breakers')
-        if representation['sajdah'] is None:
-            representation.pop('sajdah')
-        if representation['bismillah'] is None:
-            representation.pop('bismillah')
-        if representation['surah'] is None:
-            representation.pop('surah')
+        # Remove null fields safely
+        for field in ['breakers', 'sajdah', 'bismillah', 'surah']:
+            if field in representation and representation[field] is None:
+                representation.pop(field)
         return representation
 
     def create(self, validated_data):
@@ -176,14 +180,25 @@ class AyahSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class WordSerializer(serializers.ModelSerializer):
+    ayah_uuid = serializers.UUIDField(write_only=True)
+
     class Meta:
         model = Word
-        fields = ['uuid', 'ayah_id', 'text']
+        fields = ['uuid', 'ayah_uuid', 'text']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
+        from quran.models import Ayah
+        ayah_uuid = validated_data.pop('ayah_uuid')
+        ayah = Ayah.objects.get(uuid=ayah_uuid)
+        validated_data['ayah'] = ayah
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['ayah_uuid'] = str(instance.ayah.uuid)
+        return rep
 
 class AyahSerializerView(AyahSerializer):
     surah = SurahInAyahSerializer(read_only=True)
@@ -196,31 +211,86 @@ class AyahSerializerView(AyahSerializer):
     def get_mushaf(self, instance):
         return MushafSerializer(instance.surah.mushaf).data
 
+
+# Separate serializer for ayahs in surah
+class AyahInSurahSerializer(AyahSerializer):
+    class Meta(AyahSerializer.Meta):
+        fields = ['uuid', 'number', 'sajdah', 'is_bismillah', 'bismillah_text', 'text']
+        
+
 class SurahDetailSerializer(SurahSerializer):
-    ayahs = AyahSerializer(many=True, read_only=True)
+    ayahs = AyahInSurahSerializer(many=True, read_only=True)
     
     class Meta(SurahSerializer.Meta):
         fields = SurahSerializer.Meta.fields + ['ayahs']
 
 class TranslationSerializer(serializers.ModelSerializer):
+    mushaf_uuid = serializers.SerializerMethodField()
+    translator_uuid = serializers.SerializerMethodField()
+
     class Meta:
         model = Translation
-        fields = ['uuid', 'mushaf', 'translator', 'language', 'release_date', 'source', 'status']
+        fields = ['uuid', 'mushaf_uuid', 'translator_uuid', 'language', 'release_date', 'source', 'status']
         read_only_fields = ['creator']
 
+    def get_mushaf_uuid(self, obj):
+        return str(obj.mushaf.uuid) if obj.mushaf else None
+
+    def get_translator_uuid(self, obj):
+        return str(obj.translator.uuid) if obj.translator else None
+
+    def to_internal_value(self, data):
+        # Extract UUIDs for input
+        mushaf_uuid = data.get('mushaf_uuid')
+        translator_uuid = data.get('translator_uuid')
+        ret = super().to_internal_value(data)
+        ret['mushaf_uuid'] = mushaf_uuid
+        ret['translator_uuid'] = translator_uuid
+        return ret
+
     def create(self, validated_data):
+        from quran.models import Mushaf
+        from account.models import CustomUser
+        mushaf_uuid = validated_data.pop('mushaf_uuid')
+        translator_uuid = validated_data.pop('translator_uuid')
+        mushaf = Mushaf.objects.get(uuid=mushaf_uuid)
+        translator = CustomUser.objects.get(uuid=translator_uuid)
+        validated_data['mushaf'] = mushaf
+        validated_data['translator'] = translator
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['mushaf_uuid'] = str(instance.mushaf.uuid)
+        rep['translator_uuid'] = str(instance.translator.uuid)
+        return rep
 
 class AyahTranslationSerializer(serializers.ModelSerializer):
+    translation_uuid = serializers.UUIDField(write_only=True)
+    ayah_uuid = serializers.UUIDField(write_only=True)
+
     class Meta:
         model = AyahTranslation
-        fields = ['uuid', 'translation_id', 'ayah_id', 'text', 'bismillah']
+        fields = ['uuid', 'translation_uuid', 'ayah_uuid', 'text', 'bismillah']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
+        from quran.models import Translation, Ayah
+        translation_uuid = validated_data.pop('translation_uuid')
+        ayah_uuid = validated_data.pop('ayah_uuid')
+        translation = Translation.objects.get(uuid=translation_uuid)
+        ayah = Ayah.objects.get(uuid=ayah_uuid)
+        validated_data['translation'] = translation
+        validated_data['ayah'] = ayah
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['translation_uuid'] = str(instance.translation.uuid)
+        rep['ayah_uuid'] = str(instance.ayah.uuid)
+        return rep
 
 class AyahBreakerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -243,7 +313,7 @@ class WordBreakerSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class AyahAddSerializer(serializers.Serializer):
-    surah_id = serializers.IntegerField()
+    surah_uuid = serializers.UUIDField()
     text = serializers.CharField()
     is_bismillah = serializers.BooleanField(default=False)
     bismillah_text = serializers.CharField(required=False, allow_null=True)
@@ -253,7 +323,7 @@ class AyahAddSerializer(serializers.Serializer):
         return {
             'id': instance.id,
             'number': instance.number,
-            'surah_id': instance.surah.id,
+            'surah_uuid': str(instance.surah.uuid),
             'is_bismillah': instance.is_bismillah,
             'bismillah_text': instance.bismillah_text,
             'sajdah': instance.sajdah
@@ -262,10 +332,10 @@ class AyahAddSerializer(serializers.Serializer):
     def create(self, validated_data):
         # Get the text and remove it from validated_data
         text = validated_data.pop('text')
-        surah_id = validated_data.pop('surah_id')
+        surah_uuid = validated_data.pop('surah_uuid')
         
-        # Get the surah
-        surah = Surah.objects.get(id=surah_id)
+        # Get the surah by uuid
+        surah = Surah.objects.get(uuid=surah_uuid)
         
         # Get the latest ayah number in this surah and increment it
         latest_ayah = Ayah.objects.filter(surah=surah).order_by('-number').first()
@@ -296,6 +366,8 @@ class AyahAddSerializer(serializers.Serializer):
         return ayah
 
 class RecitationSerializer(serializers.ModelSerializer):
+    mushaf_uuid = serializers.UUIDField()
+    surah_uuid = serializers.UUIDField()
     file = serializers.DictField(write_only=True)
     words_timestamps = serializers.ListField(
         child=serializers.DictField(
@@ -308,9 +380,79 @@ class RecitationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recitation
-        fields = ['uuid', 'mushaf', 'surah', 'status', 'reciter_account', 'recitation_date', 'recitation_location', 
+        fields = ['uuid', 'mushaf_uuid', 'surah_uuid', 'status', 'reciter_account', 'recitation_date', 'recitation_location', 
                  'duration', 'file', 'recitation_type', 'created_at', 'updated_at', 'words_timestamps', 'ayahs_timestamps']
         read_only_fields = ['creator']
+
+    def to_internal_value(self, data):
+        mushaf_uuid = data.get('mushaf_uuid')
+        surah_uuid = data.get('surah_uuid')
+        ret = super().to_internal_value(data)
+        ret['mushaf_uuid'] = mushaf_uuid
+        ret['surah_uuid'] = surah_uuid
+        return ret
+
+    def create(self, validated_data):
+        from quran.models import Mushaf, Surah
+        file_data = validated_data.pop('file', None)
+        mushaf_uuid = validated_data.pop('mushaf_uuid')
+        surah_uuid = validated_data.pop('surah_uuid')
+        mushaf = Mushaf.objects.get(uuid=mushaf_uuid)
+        surah = Surah.objects.get(uuid=surah_uuid)
+        validated_data['mushaf'] = mushaf
+        validated_data['surah'] = surah
+        if file_data and 's3_uuid' in file_data:
+            from quran.models import File
+            try:
+                file = File.objects.get(s3_uuid=file_data['s3_uuid'])
+                validated_data['file_id'] = file.id
+            except File.DoesNotExist:
+                raise serializers.ValidationError({"file": "File with this s3_uuid does not exist"})
+        validated_data['creator'] = self.context['request'].user
+        timestamps_data = validated_data.pop('timestamps', None)
+        recitation = super().create(validated_data)
+        if timestamps_data:
+            from quran.models import Word, RecitationTimestamp
+            from datetime import datetime
+            for timestamp in timestamps_data:
+                try:
+                    start_time = datetime.strptime(timestamp['start'], "%H:%M:%S.%f")
+                    end_time = datetime.strptime(timestamp['end'], "%H:%M:%S.%f") if timestamp.get('end') else None
+                    word = None
+                    if timestamp.get('word_uuid'):
+                        try:
+                            word = Word.objects.get(uuid=timestamp['word_uuid'])
+                        except Word.DoesNotExist:
+                            continue
+                    RecitationTimestamp.objects.create(
+                        recitation=recitation,
+                        start_time=start_time,
+                        end_time=end_time,
+                        word=word
+                    )
+                except (ValueError, KeyError):
+                    continue
+        return recitation
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Always show UUIDs
+        representation['mushaf_uuid'] = str(instance.mushaf.uuid)
+        representation['surah_uuid'] = str(instance.surah.uuid)
+
+        # Dynamic timestamp field logic
+        action = self.context.get('view').action if self.context.get('view') else None
+        request = self.context.get('request')
+        if request and request.query_params.get('words_timestamps', 'true').lower() == 'false' and action == "retrieve":
+            representation.pop('words_timestamps', None)
+        else:
+            representation['words_timestamps'] = self.get_words_timestamps(instance)
+
+        if action == 'list':
+            representation.pop('words_timestamps', None)
+            representation.pop('ayahs_timestamps', None)
+
+        return representation
 
     def get_ayahs_timestamps(self, obj):
         # Get all timestamps ordered by start time
@@ -331,23 +473,6 @@ class RecitationSerializer(serializers.ModelSerializer):
             if timestamp.word_id in ayahs_first_words_as_id:
                 ayah_start_times.append(start_time)
         return ayah_start_times
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        
-        action = self.context.get('view').action
-        # Check if timestamps should be included in response
-        request = self.context.get('request')
-        if request and request.query_params.get('words_timestamps', 'true').lower() == 'false' and action == "retrieve":
-            representation.pop('words_timestamps', None)
-        else:
-            representation['words_timestamps'] = self.get_words_timestamps(instance)
-        
-        if action == 'list':
-            representation.pop('words_timestamps', None)
-            representation.pop('ayahs_timestamps', None)
-            
-        return representation
 
     def validate_timestamps(self, value):
         if not value:
@@ -370,49 +495,3 @@ class RecitationSerializer(serializers.ModelSerializer):
                 'word_uuid': str(timestamp.word.uuid) if timestamp.word else None
             })
         return timestamps
-
-    def create(self, validated_data):
-        file_data = validated_data.pop('file', None)
-        
-        # Get file from s3_uuid
-        if file_data and 's3_uuid' in file_data:
-            try:
-                file = File.objects.get(s3_uuid=file_data['s3_uuid'])
-                validated_data['file_id'] = file.id
-            except File.DoesNotExist:
-                raise serializers.ValidationError({"file": "File with this s3_uuid does not exist"})
-        
-        validated_data['creator'] = self.context['request'].user
-        
-        # Remove timestamps from validated_data as it's not a model field
-        timestamps_data = validated_data.pop('timestamps', None)
-        
-        # Create the recitation
-        recitation = super().create(validated_data)
-        
-        # Create timestamps if provided
-        if timestamps_data:
-            for timestamp in timestamps_data:
-                try:
-                    start_time = datetime.strptime(timestamp['start'], "%H:%M:%S.%f")
-                    end_time = datetime.strptime(timestamp['end'], "%H:%M:%S.%f") if timestamp.get('end') else None
-                    
-                    # Get word if word_uuid is provided
-                    word = None
-                    if timestamp.get('word_uuid'):
-                        try:
-                            word = Word.objects.get(uuid=timestamp['word_uuid'])
-                        except Word.DoesNotExist:
-                            continue
-                    
-                    # Create timestamp
-                    RecitationTimestamp.objects.create(
-                        recitation=recitation,
-                        start_time=start_time,
-                        end_time=end_time,
-                        word=word
-                    )
-                except (ValueError, KeyError) as e:
-                    continue
-        
-        return recitation

@@ -8,6 +8,7 @@ charset-normalizer==3.4.1
 coreapi==2.3.3
 coreschema==0.0.4
 Django==5.1.7
+django-debug-toolbar==5.2.0
 django-environ==0.12.0
 django-filter==25.1
 django-rest-knox==5.0.2
