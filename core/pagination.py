@@ -8,3 +8,8 @@ class CustomPageNumberPagination(PageNumberPagination):
 
     def get_paginated_response(self, data):
         return Response(data)
+
+    @staticmethod
+    def get_paginated_response_schema(schema):
+        # Return the schema as-is, since the response is just the data list
+        return schema

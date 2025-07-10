@@ -225,13 +225,19 @@ class SurahDetailSerializer(SurahSerializer):
         fields = SurahSerializer.Meta.fields + ['ayahs']
 
 class TranslationSerializer(serializers.ModelSerializer):
-    mushaf_uuid = serializers.UUIDField()
-    translator_uuid = serializers.UUIDField()
+    mushaf_uuid = serializers.SerializerMethodField()
+    translator_uuid = serializers.SerializerMethodField()
 
     class Meta:
         model = Translation
         fields = ['uuid', 'mushaf_uuid', 'translator_uuid', 'language', 'release_date', 'source', 'status']
         read_only_fields = ['creator']
+
+    def get_mushaf_uuid(self, obj):
+        return str(obj.mushaf.uuid) if obj.mushaf else None
+
+    def get_translator_uuid(self, obj):
+        return str(obj.translator.uuid) if obj.translator else None
 
     def to_internal_value(self, data):
         # Extract UUIDs for input
