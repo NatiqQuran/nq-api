@@ -51,7 +51,7 @@ class MushafViewSet(viewsets.ModelViewSet):
             return Mushaf.objects.only('uuid', 'short_name', 'name', 'source', 'status').order_by('short_name')
         # For retrieve and others, fetch all fields
         return Mushaf.objects.all().order_by('short_name')
-
+    
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
@@ -89,13 +89,24 @@ class MushafViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['post'], url_path='import', parser_classes=[MultiPartParser, FormParser])
     def import_mushaf(self, request):
+        MUSHAF_UPLOAD_MAX_SIZE = 30 * 1024 * 1024
         """
         Import a Mushaf from an uploaded JSON file.
         Expects a file field in the multipart/form-data.
+        input file format is an different format that current get views,
+        details will be added soon.
         """
         file = request.FILES.get('file')
+        if  file_obj.size > MUSHAF_UPLOAD_MAX_SIZE:
+            return Response(
+                {'error': f'File size exceeds the maximum allowed for mushaf import ({MUSHAF_UPLOAD_MAX_SIZE} bytes, got {file_obj.size} bytes).'},
+                status=400
+            )
         if not file:
             return Response({'detail': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Check file extension
+        if not file.name.lower().endswith('.json'):
+            return Response({'detail': 'Only JSON files are allowed.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             quran_data = json.load(file)
             user = request.user
@@ -465,9 +476,19 @@ class TranslationViewSet(viewsets.ModelViewSet):
         Import a Translation from an uploaded JSON file.
         Expects a file field in the multipart/form-data.
         """
+        TRANSLATION_UPLOAD_MAX_SIZE = 30 * 1024 * 1024
+
         file = request.FILES.get('file')
+        if file_obj.size > TRANSLATION_UPLOAD_MAX_SIZE:
+            return Response(
+                {'error': f'File size exceeds the maximum allowed for translation import ({TRANSLATION_UPLOAD_MAX_SIZE} bytes, got {file_obj.size} bytes).'},
+                status=400
+            )
         if not file:
             return Response({'detail': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Check file extension
+        if not file.name.lower().endswith('.json'):
+            return Response({'detail': 'Only JSON files are allowed.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             translation_data = json.load(file)
             user = request.user

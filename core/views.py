@@ -119,7 +119,8 @@ class Storage(S3Boto3Storage):
 SUBJECTS = {
     "recitations": {
         "type": "mp3",
-        "description": "Audio recitations of Quran"
+        "description": "Audio recitations of Quran",
+        "max_size": 25 * 1024 * 1024,  # 25 MB in bytes
     },
 }
 
@@ -138,7 +139,15 @@ MIME_TYPES = {
             description='Subject of the file to be uploaded. Allowed subjects: recitations'
         ),
     ],
-    request=OpenApiTypes.BINARY,
+    request={
+        "multipart/form-data": {
+            "type": "object",
+            "properties": {
+                "file": {"type": "string", "format": "binary", "description": "Max upload size depends on the subject"}
+            },
+            "required": ["file"]
+        }
+    },
     operation_id='upload_file',
     summary='Upload a file to S3 with subject-based categorization',
     description='Uploads a file to S3 with public access, categorizing it based on the'
@@ -164,6 +173,14 @@ class FileUploadView(views.APIView):
         if not subject or subject not in SUBJECTS:
             return Response(
                 {'error': f'Invalid or missing subject. Allowed subjects: {", ".join(SUBJECTS.keys())}'},
+                status=400
+            )
+
+        # Enforce file size limit
+        max_size = SUBJECTS[subject].get('max_size')
+        if max_size is not None and file_obj.size > max_size:
+            return Response(
+                {'error': f'File size exceeds the maximum allowed for {subject} ({max_size} bytes, got {file_obj.size} bytes).'},
                 status=400
             )
 
@@ -233,7 +250,7 @@ class UploadSubjectsView(views.APIView):
 
     @extend_schema(
         summary="List allowed upload subjects",
-        description="Returns a list of allowed subjects and their file types for file uploads.",
+        description="Returns a list of allowed subjects and their file types for file uploads. max size format is in bytes",
         responses=inline_serializer(
             name="UploadSubjectListResponse",
             many=True,
@@ -241,6 +258,7 @@ class UploadSubjectsView(views.APIView):
                 "subject": serializers.CharField(),
                 "type": serializers.CharField(),
                 "description": serializers.CharField(),
+                "max_size": serializers.IntegerField()
             }
         ),
         examples=[
@@ -249,7 +267,8 @@ class UploadSubjectsView(views.APIView):
                 value={
                     "subject": "recitations",
                     "type": "mp3",
-                    "description": "Audio recitations of Quran"
+                    "description": "Audio recitations of Quran",
+                    "max_size": 26214400
                 },
                 summary="Allowed upload subjects",
                 description="Example response showing allowed subjects and their file types.",
