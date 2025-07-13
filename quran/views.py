@@ -97,9 +97,9 @@ class MushafViewSet(viewsets.ModelViewSet):
         details will be added soon.
         """
         file = request.FILES.get('file')
-        if  file_obj.size > MUSHAF_UPLOAD_MAX_SIZE:
+        if  file.size > MUSHAF_UPLOAD_MAX_SIZE:
             return Response(
-                {'error': f'File size exceeds the maximum allowed for mushaf import ({MUSHAF_UPLOAD_MAX_SIZE} bytes, got {file_obj.size} bytes).'},
+                {'error': f'File size exceeds the maximum allowed for mushaf import ({MUSHAF_UPLOAD_MAX_SIZE} bytes, got {file.size} bytes).'},
                 status=400
             )
         if not file:
@@ -479,9 +479,9 @@ class TranslationViewSet(viewsets.ModelViewSet):
         TRANSLATION_UPLOAD_MAX_SIZE = 30 * 1024 * 1024
 
         file = request.FILES.get('file')
-        if file_obj.size > TRANSLATION_UPLOAD_MAX_SIZE:
+        if file.size > TRANSLATION_UPLOAD_MAX_SIZE:
             return Response(
-                {'error': f'File size exceeds the maximum allowed for translation import ({TRANSLATION_UPLOAD_MAX_SIZE} bytes, got {file_obj.size} bytes).'},
+                {'error': f'File size exceeds the maximum allowed for translation import ({TRANSLATION_UPLOAD_MAX_SIZE} bytes, got {file.size} bytes).'},
                 status=400
             )
         if not file:
