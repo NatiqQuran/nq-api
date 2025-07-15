@@ -217,3 +217,6 @@ STORAGES["default"] = {
     "BACKEND": "media_app.storage_backends.PublicMediaStorage"
 }
 PRESIGNED_URL_EXPIRATION = env.int("PRESIGNED_URL_EXPIRATION", default=600)
+
+# Forced Alignment API endpoint
+FORCED_ALIGNMENT_API_URL = os.environ.get('FORCED_ALIGNMENT_API_URL', 'http://localhost:5000')

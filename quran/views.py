@@ -14,6 +14,9 @@ from core.pagination import CustomPageNumberPagination
 from rest_framework.decorators import action
 import json
 from rest_framework.parsers import MultiPartParser, FormParser
+import requests
+from django.conf import settings
+from quran.models import RecitationTimestamp
 
 @extend_schema_view(
     list=extend_schema(summary="List all Mushafs (Quranic manuscripts/editions)"),
@@ -673,6 +676,63 @@ class RecitationViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             queryset = queryset.prefetch_related('timestamps')
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        recitation = None
+        if response.status_code in (200, 201):
+            # Get the created recitation instance
+            recitation_uuid = response.data.get('uuid')
+            if recitation_uuid:
+                try:
+                    recitation = Recitation.objects.get(uuid=recitation_uuid)
+                except Recitation.DoesNotExist:
+                    recitation = None
+        if recitation and not recitation.timestamps.exists():
+            audio_url = recitation.file.get_absolute_url()
+            # Get all words in the surah, ordered by ayah number and id (creation order)
+            words = list(Word.objects.filter(ayah__surah=recitation.surah).order_by('ayah__number', 'id'))
+            text = ' '.join([w.text for w in words])
+            if audio_url and text:
+                try:
+                    align_response = requests.post(
+                        f'{settings.FORCED_ALIGNMENT_API_URL}/align',
+                        json={
+                            'mp3_url': audio_url,
+                            'text': text,
+                            'language': 'ar'
+                        },
+                        timeout=120
+                    )
+                    align_response.raise_for_status()
+                    alignment_data = align_response.json()
+                    from datetime import datetime, timedelta
+                    # Match force-alignment words to ayah words by text
+                    word_idx = 0
+                    for word_data in alignment_data:
+                        # Ensure 'word' key exists in word_data
+                        # Find the next matching word in ayah words
+                        while word_idx < len(words) and words[word_idx].text != word_data['text']:
+                            word_idx += 1
+                        if word_idx < len(words):
+                            word_obj = words[word_idx]
+                            start_time = (datetime.min + timedelta(seconds=word_data['start'])).time()
+                            end_time = (datetime.min + timedelta(seconds=word_data['end'])).time() if word_data.get('end') else None
+                            RecitationTimestamp.objects.create(
+                                recitation=recitation,
+                                start_time=start_time,
+                                end_time=end_time,
+                                word=word_obj
+                            )
+                            word_idx += 1
+                        # If not matched, skip this word_data
+                except Exception as e:
+                    return Response({'detail': f'Failed to generate timestamps: {str(e)}'}, status=500)
+        return response
+
+    # Remove forced-alignment logic from retrieve
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)

@@ -160,8 +160,8 @@ class Recitation(models.Model):
 class RecitationTimestamp(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     recitation = models.ForeignKey(Recitation, on_delete=models.CASCADE, related_name='timestamps')
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField(null=True, blank=True)
+    start_time = models.TimeField()
+    end_time = models.TimeField(null=True, blank=True)
     word = models.ForeignKey(Word, on_delete=models.CASCADE, related_name='recitation_timestamps', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

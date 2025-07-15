@@ -22,7 +22,7 @@ services:
       - "8001:80"
     depends_on:
       - db
-
+      - forced-alignment
     volumes:
       - static:/app/staticfiles
     environment:
@@ -33,10 +33,10 @@ services:
       CSRF_TRUSTED_ORIGINS: http://localhost:8001
       DATABASE_NAME: postgres
       DATABASE_USERNAME: postgres
-
       DATABASE_PASSWORD: password
       DATABASE_HOST: db
       DATABASE_PORT: 5432
+      FORCED_ALIGNMENT_API_URL: http://forced-alignment:5000
 
   frontend-proxy:
     image: nginx:latest
@@ -47,6 +47,9 @@ services:
       - static:/static:ro
     depends_on:
       - api
+  forced-alignment:
+    image: natiqquran/forced-alignment
+    container_name: forced-alignment
 volumes:
   postgres_data:
   static:

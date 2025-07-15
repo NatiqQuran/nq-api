@@ -87,3 +87,7 @@ class File(models.Model):
 
     def __str__(self):
         return f"{self.upload_name} ({self.format})"
+
+    def get_absolute_url(self):
+        from django.conf import settings
+        return f"{settings.AWS_S3_ENDPOINT_URL}/{settings.AWS_STORAGE_BUCKET_NAME}/recitations/{self.s3_uuid}.{self.format}"
