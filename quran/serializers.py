@@ -366,8 +366,8 @@ class AyahAddSerializer(serializers.Serializer):
         return ayah
 
 class RecitationSerializer(serializers.ModelSerializer):
-    mushaf_uuid = serializers.UUIDField()
-    surah_uuid = serializers.UUIDField()
+    mushaf_uuid = serializers.UUIDField(write_only=True)
+    surah_uuid = serializers.UUIDField(write_only=True)
     file = serializers.DictField(write_only=True)
     words_timestamps = serializers.ListField(
         child=serializers.DictField(
@@ -377,12 +377,21 @@ class RecitationSerializer(serializers.ModelSerializer):
         write_only=True
     )
     ayahs_timestamps = serializers.SerializerMethodField()
+    # Add read-only fields for output
+    get_mushaf_uuid = serializers.SerializerMethodField(read_only=True)
+    get_surah_uuid = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Recitation
-        fields = ['uuid', 'mushaf_uuid', 'surah_uuid', 'status', 'reciter_account', 'recitation_date', 'recitation_location', 
+        fields = ['uuid', 'mushaf_uuid', 'get_mushaf_uuid', 'surah_uuid', 'get_surah_uuid', 'status', 'reciter_account', 'recitation_date', 'recitation_location', 
                  'duration', 'file', 'recitation_type', 'created_at', 'updated_at', 'words_timestamps', 'ayahs_timestamps']
-        read_only_fields = ['creator']
+        read_only_fields = ['creator', 'get_mushaf_uuid', 'get_surah_uuid']
+
+    def get_get_mushaf_uuid(self, obj):
+        return str(obj.mushaf.uuid) if obj.mushaf else None
+
+    def get_get_surah_uuid(self, obj):
+        return str(obj.surah.uuid) if obj.surah else None
 
     def to_internal_value(self, data):
         mushaf_uuid = data.get('mushaf_uuid')
@@ -409,7 +418,8 @@ class RecitationSerializer(serializers.ModelSerializer):
             except File.DoesNotExist:
                 raise serializers.ValidationError({"file": "File with this s3_uuid does not exist"})
         validated_data['creator'] = self.context['request'].user
-        timestamps_data = validated_data.pop('timestamps', None)
+        # Accept words_timestamps as the input for timestamps
+        timestamps_data = validated_data.pop('words_timestamps', None)
         recitation = super().create(validated_data)
         if timestamps_data:
             from quran.models import Word, RecitationTimestamp
@@ -436,9 +446,12 @@ class RecitationSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        # Always show UUIDs
-        representation['mushaf_uuid'] = str(instance.mushaf.uuid)
-        representation['surah_uuid'] = str(instance.surah.uuid)
+        # Remove write-only fields from output
+        representation.pop('mushaf_uuid', None)
+        representation.pop('surah_uuid', None)
+        # Always show UUIDs using the read-only methods
+        representation['mushaf_uuid'] = representation.pop('get_mushaf_uuid', None)
+        representation['surah_uuid'] = representation.pop('get_surah_uuid', None)
 
         # Dynamic timestamp field logic
         action = self.context.get('view').action if self.context.get('view') else None
