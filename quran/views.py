@@ -14,8 +14,6 @@ from core.pagination import CustomPageNumberPagination
 from rest_framework.decorators import action
 import json
 from rest_framework.parsers import MultiPartParser, FormParser
-import requests
-from django.conf import settings
 from quran.models import RecitationTimestamp
 
 @extend_schema_view(
@@ -92,62 +90,24 @@ class MushafViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['post'], url_path='import', parser_classes=[MultiPartParser, FormParser])
     def import_mushaf(self, request):
+        from django.db import transaction
         MUSHAF_UPLOAD_MAX_SIZE = 30 * 1024 * 1024
-        """
-        Import a Mushaf from an uploaded JSON file.
-        Expects a file field in the multipart/form-data.
-        input file format is an different format that current get views,
-        details will be added soon.
-        """
         file = request.FILES.get('file')
-        if  file.size > MUSHAF_UPLOAD_MAX_SIZE:
+        if not file:
+            return Response({'detail': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        if file.size > MUSHAF_UPLOAD_MAX_SIZE:
             return Response(
                 {'error': f'File size exceeds the maximum allowed for mushaf import ({MUSHAF_UPLOAD_MAX_SIZE} bytes, got {file.size} bytes).'},
                 status=400
             )
-        if not file:
-            return Response({'detail': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
-        # Check file extension
         if not file.name.lower().endswith('.json'):
             return Response({'detail': 'Only JSON files are allowed.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             quran_data = json.load(file)
             user = request.user
-            mushaf_data = quran_data["mushaf"]
-            mushaf = Mushaf.objects.create(
-                creator_id=user.id,
-                name=mushaf_data["name"],
-                short_name=mushaf_data["short_name"],
-                source=mushaf_data["source"]
-            )
-            ayahs = []
-            words = []
-            surah_objs = []
-            surah_number_to_obj = {}
-            for surah_data in quran_data["surahs"]:
-                surah = mushaf.surahs.create(
-                    creator_id=user.id,
-                    number=surah_data["number"],
-                    name=surah_data["name"],
-                    period=surah_data["period"]
-                )
-                surah_objs.append(surah)
-                surah_number_to_obj[surah.number] = surah
-                for ayah in surah_data["ayahs"]:
-                    ayah_obj = Ayah(
-                        creator_id=user.id,
-                        surah=surah,
-                        number=ayah["number"],
-                        sajdah=ayah["sajdah"],
-                        is_bismillah=ayah["is_bismillah"],
-                        bismillah_text=ayah["bismillah_text"],
-                    )
-                    ayahs.append(ayah_obj)
-                    for word in ayah["words"]:
-                        words.append(Word(ayah=ayah_obj, text=word["text"], creator_id=user.id))
-            Ayah.objects.bulk_create(ayahs)
-            Word.objects.bulk_create(words)
-            return Response({'detail': f'Mushaf {mushaf.name} imported successfully.'}, status=status.HTTP_201_CREATED)
+            from quran.tasks import import_mushaf_task
+            import_mushaf_task.delay(quran_data, user.id)
+            return Response({'detail': 'Mushaf import started. You will be notified when it is complete.'}, status=status.HTTP_202_ACCEPTED)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -495,30 +455,9 @@ class TranslationViewSet(viewsets.ModelViewSet):
         try:
             translation_data = json.load(file)
             user = request.user
-            # Get or create the user for the translator
-            translator, _ = user.__class__.objects.get_or_create(username=translation_data["translator_username"])
-            mushaf = Mushaf.objects.get(short_name=translation_data["mushaf"])
-            translation = Translation.objects.create(
-                creator_id=user.id,
-                mushaf_id=mushaf.id,
-                translator_id=translator.id,
-                source=translation_data["source"],
-                status="published",
-                language=translation_data["language"],
-            )
-            ayah_translations = []
-            first_ayah = translation_data["surahs"][0]["ayah_translations"][0]['text'] if translation_data["surahs"] and translation_data["surahs"][0]["ayah_translations"] else ""
-            for surah in translation_data["surahs"]:
-                for ayah in surah["ayah_translations"]:
-                    ayah_translations.append(AyahTranslation(
-                        creator_id=user.id,
-                        translation_id=translation.id,
-                        ayah_id=ayah["number"],
-                        text=ayah["text"],
-                        bismillah=first_ayah,
-                    ))
-            AyahTranslation.objects.bulk_create(ayah_translations)
-            return Response({'detail': f'Translation {translation.id} imported successfully.'}, status=status.HTTP_201_CREATED)
+            from quran.tasks import import_translation_task
+            import_translation_task.delay(translation_data, user.id)
+            return Response({'detail': 'Translation import started. You will be notified when it is complete.'}, status=status.HTTP_202_ACCEPTED)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -689,45 +628,11 @@ class RecitationViewSet(viewsets.ModelViewSet):
                 except Recitation.DoesNotExist:
                     recitation = None
         if recitation and not recitation.timestamps.exists():
-            audio_url = recitation.file.get_absolute_url()
-            # Get all words in the surah, ordered by ayah number and id (creation order)
-            words = list(Word.objects.filter(ayah__surah=recitation.surah).order_by('ayah__number', 'id'))
-            text = ' '.join([w.text for w in words])
-            if audio_url and text:
-                try:
-                    align_response = requests.post(
-                        f'{settings.FORCED_ALIGNMENT_API_URL}/align',
-                        json={
-                            'mp3_url': audio_url,
-                            'text': text,
-                            'language': 'ar'
-                        },
-                        timeout=120
-                    )
-                    align_response.raise_for_status()
-                    alignment_data = align_response.json()
-                    from datetime import datetime, timedelta
-                    # Match force-alignment words to ayah words by text
-                    word_idx = 0
-                    for word_data in alignment_data:
-                        # Ensure 'word' key exists in word_data
-                        # Find the next matching word in ayah words
-                        while word_idx < len(words) and words[word_idx].text != word_data['text']:
-                            word_idx += 1
-                        if word_idx < len(words):
-                            word_obj = words[word_idx]
-                            start_time = (datetime.min + timedelta(seconds=word_data['start'])).time()
-                            end_time = (datetime.min + timedelta(seconds=word_data['end'])).time() if word_data.get('end') else None
-                            RecitationTimestamp.objects.create(
-                                recitation=recitation,
-                                start_time=start_time,
-                                end_time=end_time,
-                                word=word_obj
-                            )
-                            word_idx += 1
-                        # If not matched, skip this word_data
-                except Exception as e:
-                    return Response({'detail': f'Failed to generate timestamps: {str(e)}'}, status=500)
+            from quran.tasks import generate_recitation_timestamps_task
+            generate_recitation_timestamps_task.delay(recitation)
+            return Response({
+                'detail': 'Generating recitation timestamps',
+                }, status=status.HTTP_202_ACCEPTED)
         return response
 
     # Remove forced-alignment logic from retrieve
