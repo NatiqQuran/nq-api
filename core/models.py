@@ -91,3 +91,29 @@ class File(models.Model):
     def get_absolute_url(self):
         from django.conf import settings
         return f"{settings.AWS_S3_ENDPOINT_URL}/{settings.AWS_STORAGE_BUCKET_NAME}/recitations/{self.s3_uuid}.{self.format}"
+
+class Notification(models.Model):
+    STATUS_NOTHING = 'nothing_happened'
+    STATUS_GOT = 'got_notification'
+    STATUS_VIEWED = 'viewed_notification'
+    STATUS_OPENED = 'opened_notification'
+
+    STATUS_CHOICES = [
+        (STATUS_NOTHING, 'Nothing Happened'),
+        (STATUS_GOT, 'User Got Notification'),
+        (STATUS_VIEWED, 'User Viewed Notification'),
+        (STATUS_OPENED, 'User Opened Notification'),
+    ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
+    resource_controller = models.CharField(max_length=128)
+    resource_action = models.CharField(max_length=128)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_NOTHING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notification for {self.user} - {self.resource_controller}.{self.resource_action} - {self.status}"

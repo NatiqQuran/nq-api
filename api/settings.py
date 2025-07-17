@@ -224,4 +224,4 @@ FORCED_ALIGNMENT_API_URL = os.environ.get('FORCED_ALIGNMENT_API_URL', 'http://lo
 # Celery configuration
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL','amqp://guest:guest@localhost:5672//')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'rpc://')
-CELERY_ACCEPT_CONTENT = ['pickle']
+CELERY_ACCEPT_CONTENT = ['pickle', 'application/json']
