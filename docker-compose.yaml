@@ -16,7 +16,7 @@ services:
       - "5432:5432"
 
   api:
-    image: .
+    image: natiqquran/nq-api:latest
     container_name: nq-api
     ports:
       - "8001:80"
@@ -26,7 +26,7 @@ services:
       - rabbitmq
     volumes:
       - static:/app/staticfiles
-    environment:
+    environment: &default_env
       SECRET_KEY: bruh
       DEBUG: 1
       DJANGO_LOGLEVEL: info
@@ -55,7 +55,7 @@ services:
   
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbitmq
+    container_name: nq-rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -64,6 +64,16 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+  celery:
+    restart: always
+    image: natiqquran/nq-api:latest
+    entrypoint: celery
+    command: -A api worker -l info
+    environment: *default_env
+    depends_on:
+      - db
+      - rabbitmq
+      - api
 volumes:
   postgres_data:
   static:
