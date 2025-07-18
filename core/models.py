@@ -93,6 +93,7 @@ class File(models.Model):
         return f"{settings.AWS_S3_ENDPOINT_URL}/{settings.AWS_STORAGE_BUCKET_NAME}/recitations/{self.s3_uuid}.{self.format}"
 
 class Notification(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     STATUS_NOTHING = 'nothing_happened'
     STATUS_GOT = 'got_notification'
     STATUS_VIEWED = 'viewed_notification'
@@ -108,7 +109,25 @@ class Notification(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
     resource_controller = models.CharField(max_length=128)
     resource_action = models.CharField(max_length=128)
+    resource_uuid = models.UUIDField(blank=True, null=True)
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_NOTHING)
+    description = models.CharField(max_length=255, blank=True, null=True)
+    message = models.TextField(blank=True, null=True)
+    MESSAGE_TYPE_SUCCESS = 'success'
+    MESSAGE_TYPE_FAILED = 'failed'
+    MESSAGE_TYPE_WARNING = 'warning'
+    MESSAGE_TYPE_PENDING = 'pending'
+    MESSAGE_TYPE_CHOICES = [
+        (MESSAGE_TYPE_SUCCESS, 'Success'),
+        (MESSAGE_TYPE_FAILED, 'Failed'),
+        (MESSAGE_TYPE_WARNING, 'Warning'),
+        (MESSAGE_TYPE_PENDING, 'Pending'),
+    ]
+    message_type = models.CharField(
+        max_length=16,
+        choices=MESSAGE_TYPE_CHOICES,
+        default=MESSAGE_TYPE_PENDING
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

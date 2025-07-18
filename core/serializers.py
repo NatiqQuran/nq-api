@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.core.validators import RegexValidator
 from django.db import models
 
-from core.models import ErrorLog, PhraseTranslation, Phrase
+from core.models import ErrorLog, PhraseTranslation, Phrase, Notification
 
 class ErrorLogSerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,3 +45,18 @@ class PhraseModifySerializer(serializers.Serializer):
     def create(self, validated_data):
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = [
+            'uuid',
+            'resource_controller',
+            'resource_action',
+            'resource_uuid',
+            'status',
+            'description',
+            'message',
+            'message_type',
+            'created_at',
+        ]
