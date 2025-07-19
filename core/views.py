@@ -1,10 +1,11 @@
 from rest_framework.parsers import MultiPartParser
 from django.http import HttpResponse
 from rest_framework import viewsets, permissions, views
-from .models import ErrorLog, Phrase, PhraseTranslation, File
+from .models import ErrorLog, Phrase, PhraseTranslation, File, Notification
 from .serializers import (ErrorLogSerializer, PhraseModifySerializer,
                           PhraseSerializer,
-                          PhraseTranslationSerializer)
+                          PhraseTranslationSerializer,
+                          NotificationSerializer)
 from rest_framework.decorators import action
 from storages.backends.s3boto3 import S3Boto3Storage
 import uuid
@@ -16,6 +17,8 @@ from django.conf import settings
 from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view, OpenApiExample, inline_serializer
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
+from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
+from core.pagination import CustomPageNumberPagination
 
 
 @extend_schema_view(
@@ -282,3 +285,74 @@ class UploadSubjectsView(views.APIView):
             for key, value in SUBJECTS.items()
         ]
         return Response(subjects_array)
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [DjangoModelPermissions]
+    pagination_class = CustomPageNumberPagination
+
+    def get_permissions(self):
+        if self.action == 'me':
+            return [IsAuthenticated()]
+        return [DjangoModelPermissions()]
+
+    @extend_schema(
+        summary="Get the current user's notifications (paginated)",
+        description="Returns a paginated list of the current user's notifications. Marks notifications in the current page as 'got_notification' if not already marked.",
+        responses={200: NotificationSerializer(many=True)}
+    )
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+        paginator = CustomPageNumberPagination()
+        page = paginator.paginate_queryset(notifications, request)
+        # Update status to 'got_notification' only for notifications in the current page
+        to_update = []
+        for n in page:
+            if n.status == Notification.STATUS_NOTHING:
+                n.status = Notification.STATUS_GOT
+                to_update.append(n)
+        if to_update:
+            Notification.objects.bulk_update(to_update, ['status'])
+        serializer = self.get_serializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    @extend_schema(
+        summary="Mark notifications as viewed",
+        description="Marks all notifications with status 'got_notification' as 'viewed_notification' for the current user.",
+        responses={200: OpenApiTypes.OBJECT}
+    )
+    @action(detail=False, methods=['get'])
+    def viewed(self, request):
+        notifications = Notification.objects.filter(user=request.user, status=Notification.STATUS_GOT)
+        updated_count = notifications.update(status=Notification.STATUS_VIEWED)
+        return Response({'detail': 'Notifications marked as viewed.', 'updated': updated_count})
+
+    @extend_schema(
+        summary="Mark a notification as opened",
+        description="Marks a specific notification as 'opened_notification' using its uuid (provided as a query parameter).",
+        parameters=[
+            OpenApiParameter(
+                name='uuid',
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="UUID of the notification to mark as opened."
+            )
+        ],
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+    )
+    @action(detail=False, methods=['get'])
+    def opened(self, request):
+        uuid = request.query_params.get('uuid')
+        if not uuid:
+            return Response({'detail': 'Notification uuid is required.'}, status=400)
+        try:
+            notification = Notification.objects.get(user=request.user, uuid=uuid)
+        except Notification.DoesNotExist:
+            return Response({'detail': 'Notification not found.'}, status=404)
+        notification.status = Notification.STATUS_OPENED
+        notification.save(update_fields=['status'])
+        return Response({'detail': 'Notification marked as opened.'})
