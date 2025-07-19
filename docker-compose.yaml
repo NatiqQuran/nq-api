@@ -38,6 +38,7 @@ services:
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       FORCED_ALIGNMENT_API_URL: http://forced-alignment:5000
+      FORCED_ALIGNMENT_SECRET_KEY: bruh
       CELERY_BROKER_URL: rabbitmq
 
   frontend-proxy:

@@ -380,18 +380,22 @@ class RecitationSerializer(serializers.ModelSerializer):
     # Add read-only fields for output
     get_mushaf_uuid = serializers.SerializerMethodField(read_only=True)
     get_surah_uuid = serializers.SerializerMethodField(read_only=True)
+    reciter_account_uuid = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Recitation
-        fields = ['uuid', 'mushaf_uuid', 'get_mushaf_uuid', 'surah_uuid', 'get_surah_uuid', 'status', 'reciter_account', 'recitation_date', 'recitation_location', 
+        fields = ['uuid', 'mushaf_uuid', 'get_mushaf_uuid', 'surah_uuid', 'get_surah_uuid', 'status', 'reciter_account_uuid', 'recitation_date', 'recitation_location', 
                  'duration', 'file', 'recitation_type', 'created_at', 'updated_at', 'words_timestamps', 'ayahs_timestamps']
-        read_only_fields = ['creator', 'get_mushaf_uuid', 'get_surah_uuid']
+        read_only_fields = ['creator', 'get_mushaf_uuid', 'get_surah_uuid', 'reciter_account_uuid']
 
     def get_get_mushaf_uuid(self, obj):
         return str(obj.mushaf.uuid) if obj.mushaf else None
 
     def get_get_surah_uuid(self, obj):
         return str(obj.surah.uuid) if obj.surah else None
+
+    def get_reciter_account_uuid(self, obj):
+        return str(obj.reciter_account.uuid) if obj.reciter_account else None
 
     def to_internal_value(self, data):
         mushaf_uuid = data.get('mushaf_uuid')
@@ -452,6 +456,8 @@ class RecitationSerializer(serializers.ModelSerializer):
         # Always show UUIDs using the read-only methods
         representation['mushaf_uuid'] = representation.pop('get_mushaf_uuid', None)
         representation['surah_uuid'] = representation.pop('get_surah_uuid', None)
+        # Remove reciter_account (int id) from output if present
+        representation.pop('reciter_account', None)
 
         # Dynamic timestamp field logic
         action = self.context.get('view').action if self.context.get('view') else None

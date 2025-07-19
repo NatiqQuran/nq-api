@@ -220,6 +220,7 @@ PRESIGNED_URL_EXPIRATION = env.int("PRESIGNED_URL_EXPIRATION", default=600)
 
 # Forced Alignment API endpoint
 FORCED_ALIGNMENT_API_URL = os.environ.get('FORCED_ALIGNMENT_API_URL', 'http://localhost:5000')
+FORCED_ALIGNMENT_SECRET_KEY = os.environ.get('FORCED_ALIGNMENT_SECRET_KEY', '')
 
 # Celery configuration
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL','amqp://guest:guest@localhost:5672//')
