@@ -115,6 +115,10 @@ def generate_recitation_timestamps_task(recitation):
     try:
         if audio_url and text:
             try:
+                headers = {}
+                if getattr(settings, 'FORCED_ALIGNMENT_SECRET_KEY', None):
+                    if settings.FORCED_ALIGNMENT_SECRET_KEY:
+                        headers['Authorization'] = settings.FORCED_ALIGNMENT_SECRET_KEY
                 align_response = requests.post(
                     f'{settings.FORCED_ALIGNMENT_API_URL}/align',
                     json={
@@ -122,6 +126,7 @@ def generate_recitation_timestamps_task(recitation):
                         'text': text,
                         'language': 'ar'
                     },
+                    headers=headers if headers else None,
                     timeout=120
                 )
                 align_response.raise_for_status()
