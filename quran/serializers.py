@@ -39,9 +39,9 @@ class SurahSerializer(serializers.ModelSerializer):
     def get_names(self, instance):
         return [{
             'name': instance.name,
-            'name_pronunciation': instance.name_pronunciation,
-            'name_translation': instance.name_translation,
-            'name_transliteration': instance.name_transliteration
+            'pronunciation': instance.name_pronunciation,
+            'translation': instance.name_translation,
+            'transliteration': instance.name_transliteration
         }]
 
     def create(self, validated_data):
@@ -65,9 +65,9 @@ class SurahInAyahSerializer(serializers.ModelSerializer):
     def get_names(self, instance):
         return [{
             'name': instance.name,
-            'name_pronunciation': instance.name_pronunciation,
-            'name_translation': instance.name_translation,
-            'name_transliteration': instance.name_transliteration
+            'pronunciation': instance.name_pronunciation,
+            'translation': instance.name_translation,
+            'transliteration': instance.name_transliteration
         }]
 
 class AyahSerializer(serializers.ModelSerializer):
@@ -224,13 +224,29 @@ class SurahDetailSerializer(SurahSerializer):
     class Meta(SurahSerializer.Meta):
         fields = SurahSerializer.Meta.fields + ['ayahs']
 
+class AyahTranslationNestedSerializer(serializers.ModelSerializer):
+    ayah_uuid = serializers.UUIDField(source='ayah.uuid', read_only=True)
+    bismillah = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AyahTranslation
+        fields = ['uuid', 'ayah_uuid', 'text', 'bismillah']
+        read_only_fields = ['creator']
+
+    def get_bismillah(self, obj):
+        # Only include bismillah for the first ayah in the surah (ayah number 1)
+        if hasattr(obj, 'ayah') and getattr(obj.ayah, 'number', None) == 1:
+            return obj.bismillah
+        return None
+
 class TranslationSerializer(serializers.ModelSerializer):
     mushaf_uuid = serializers.SerializerMethodField()
     translator_uuid = serializers.SerializerMethodField()
+    ayahs_translations = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Translation
-        fields = ['uuid', 'mushaf_uuid', 'translator_uuid', 'language', 'release_date', 'source', 'status']
+        fields = ['uuid', 'mushaf_uuid', 'translator_uuid', 'language', 'release_date', 'source', 'status', 'ayahs_translations']
         read_only_fields = ['creator']
 
     def get_mushaf_uuid(self, obj):
@@ -238,6 +254,11 @@ class TranslationSerializer(serializers.ModelSerializer):
 
     def get_translator_uuid(self, obj):
         return str(obj.translator.uuid) if obj.translator else None
+
+    def get_ayahs_translations(self, obj):
+        from .serializers import AyahTranslationNestedSerializer
+        ayah_translations = obj.ayah_translations.all()
+        return AyahTranslationNestedSerializer(ayah_translations, many=True).data
 
     def to_internal_value(self, data):
         # Extract UUIDs for input
@@ -288,7 +309,6 @@ class AyahTranslationSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep['translation_uuid'] = str(instance.translation.uuid)
         rep['ayah_uuid'] = str(instance.ayah.uuid)
         return rep
 
@@ -514,3 +534,18 @@ class RecitationSerializer(serializers.ModelSerializer):
                 'word_uuid': str(timestamp.word.uuid) if timestamp.word else None
             })
         return timestamps
+
+class TranslationListSerializer(serializers.ModelSerializer):
+    mushaf_uuid = serializers.SerializerMethodField()
+    translator_uuid = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Translation
+        fields = ['uuid', 'mushaf_uuid', 'translator_uuid', 'language', 'release_date', 'source', 'status']
+        read_only_fields = ['creator']
+
+    def get_mushaf_uuid(self, obj):
+        return str(obj.mushaf.uuid) if obj.mushaf else None
+
+    def get_translator_uuid(self, obj):
+        return str(obj.translator.uuid) if obj.translator else None

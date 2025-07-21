@@ -287,6 +287,14 @@ class UploadSubjectsView(views.APIView):
         return Response(subjects_array)
 
 
+@extend_schema_view(
+    list=extend_schema(summary="List all notifications"),
+    retrieve=extend_schema(summary="Retrieve a specific notification by UUID"),
+    create=extend_schema(summary="Create a new notification"),
+    update=extend_schema(summary="Update an existing notification"),
+    partial_update=extend_schema(summary="Partially update a notification"),
+    destroy=extend_schema(summary="Delete a notification")
+)
 class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
