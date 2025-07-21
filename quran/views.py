@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, Recitation
 from quran.serializers import (
     AyahSerializerView, MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
-    WordSerializer, TranslationSerializer, AyahTranslationSerializer, AyahAddSerializer, RecitationSerializer
+    WordSerializer, TranslationSerializer, AyahTranslationSerializer, AyahAddSerializer, RecitationSerializer, TranslationListSerializer
 )
 
 from core import permissions as core_permissions
@@ -15,6 +15,7 @@ from rest_framework.decorators import action
 import json
 from rest_framework.parsers import MultiPartParser, FormParser
 from quran.models import RecitationTimestamp
+from rest_framework import serializers
 
 @extend_schema_view(
     list=extend_schema(summary="List all Mushafs (Quranic manuscripts/editions)"),
@@ -397,6 +398,13 @@ class TranslationViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(language=language)
         return queryset
 
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            from .serializers import TranslationSerializer
+            return TranslationSerializer
+        from .serializers import TranslationListSerializer
+        return TranslationListSerializer
+
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
@@ -460,6 +468,25 @@ class TranslationViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Translation import started. You will be notified when it is complete.'}, status=status.HTTP_202_ACCEPTED)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # --- ADDED: Paginated ayahs_translations in retrieve ---
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = serializer.data
+        # Paginate ayahs_translations
+        ayah_translations_qs = instance.ayah_translations.all().order_by('ayah__number')
+        paginator = CustomPageNumberPagination()
+        page = paginator.paginate_queryset(ayah_translations_qs, request)
+        from .serializers import AyahTranslationNestedSerializer
+        if page is not None:
+            ayahs_translations = AyahTranslationNestedSerializer(page, many=True).data
+            data['ayahs_translations'] = ayahs_translations
+            return paginator.get_paginated_response(data)
+        else:
+            ayahs_translations = AyahTranslationNestedSerializer(ayah_translations_qs, many=True).data
+            data['ayahs_translations'] = ayahs_translations
+            return Response(data)
 
 @extend_schema_view(
     list=extend_schema(
