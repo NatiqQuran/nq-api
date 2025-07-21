@@ -358,7 +358,18 @@ class WordViewSet(viewsets.ModelViewSet):
             )
         ]
     ),
-    retrieve=extend_schema(summary="Retrieve a specific Translation by UUID"),
+    retrieve=extend_schema(
+        summary="Retrieve a specific Translation by UUID",
+        parameters=[
+            OpenApiParameter(
+                name="surah_uuid",
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="UUID of the Surah to filter ayahs_translations by."
+            )
+        ]
+    ),
     create=extend_schema(summary="Create a new Translation record"),
     update=extend_schema(summary="Update an existing Translation record"),
     partial_update=extend_schema(summary="Partially update a Translation record"),
@@ -474,17 +485,20 @@ class TranslationViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         data = serializer.data
-        # Paginate ayahs_translations
-        ayah_translations_qs = instance.ayah_translations.all().order_by('ayah__number')
+        # Paginate ayahs_translations, filtered by surah_uuid if provided
+        ayahs_translations_qs = instance.ayah_translations.all().order_by('ayah__number')
+        surah_uuid = request.query_params.get('surah_uuid')
+        if surah_uuid:
+            ayahs_translations_qs = ayahs_translations_qs.filter(ayah__surah__uuid=surah_uuid)
         paginator = CustomPageNumberPagination()
-        page = paginator.paginate_queryset(ayah_translations_qs, request)
+        page = paginator.paginate_queryset(ayahs_translations_qs, request)
         from .serializers import AyahTranslationNestedSerializer
         if page is not None:
             ayahs_translations = AyahTranslationNestedSerializer(page, many=True).data
             data['ayahs_translations'] = ayahs_translations
             return paginator.get_paginated_response(data)
         else:
-            ayahs_translations = AyahTranslationNestedSerializer(ayah_translations_qs, many=True).data
+            ayahs_translations = AyahTranslationNestedSerializer(ayahs_translations_qs, many=True).data
             data['ayahs_translations'] = ayahs_translations
             return Response(data)
 
@@ -494,6 +508,7 @@ class TranslationViewSet(viewsets.ModelViewSet):
         parameters=[
             OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
             OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name='surah_uuid', description='Surah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
         ]
     ),
     retrieve=extend_schema(summary="Retrieve a specific Ayah Translation by UUID"),
@@ -554,10 +569,13 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
         queryset = AyahTranslation.objects.select_related('translation', 'ayah').only(*ayah_translation_fields)
         translation_uuid = self.request.query_params.get('translation_uuid', None)
         ayah_uuid = self.request.query_params.get('ayah_uuid', None)
+        surah_uuid = self.request.query_params.get('surah_uuid', None)
         if translation_uuid:
             queryset = queryset.filter(translation__uuid=translation_uuid)
         if ayah_uuid:
             queryset = queryset.filter(ayah__uuid=ayah_uuid)
+        if surah_uuid:
+            queryset = queryset.filter(ayah__surah__uuid=surah_uuid)
         return queryset
 
     
