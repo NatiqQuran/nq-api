@@ -39,9 +39,9 @@ class SurahSerializer(serializers.ModelSerializer):
     def get_names(self, instance):
         return [{
             'name': instance.name,
-            'name_pronunciation': instance.name_pronunciation,
-            'name_translation': instance.name_translation,
-            'name_transliteration': instance.name_transliteration
+            'pronunciation': instance.name_pronunciation,
+            'translation': instance.name_translation,
+            'transliteration': instance.name_transliteration
         }]
 
     def create(self, validated_data):
@@ -65,9 +65,9 @@ class SurahInAyahSerializer(serializers.ModelSerializer):
     def get_names(self, instance):
         return [{
             'name': instance.name,
-            'name_pronunciation': instance.name_pronunciation,
-            'name_translation': instance.name_translation,
-            'name_transliteration': instance.name_transliteration
+            'pronunciation': instance.name_pronunciation,
+            'translation': instance.name_translation,
+            'transliteration': instance.name_transliteration
         }]
 
 class AyahSerializer(serializers.ModelSerializer):
