@@ -175,6 +175,61 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Natiq Quran API',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    # Tag order and descriptions for the OpenAPI schema
+    'TAGS': [
+        {
+            'name': 'auth',
+            'description': 'Authentication and authorization endpoints (login, logout, register, token management)',
+        },
+        {
+            'name': 'profile',
+            'description': "Endpoints for retrieving and updating the current user's profile",
+        },
+        {
+            'name': 'users',
+            'description': 'Admin-only endpoints to list, create, update and delete users',
+        },
+        {
+            'name': 'groups',
+            'description': 'Admin-only endpoints to manage permission groups',
+        },
+        {
+            'name': 'mushafs',
+            'description': 'Manage Quranic manuscripts / editions',
+        },
+        {
+            'name': 'surahs',
+            'description': 'Manage chapters of the Quran (Surahs)',
+        },
+        {
+            'name': 'ayahs',
+            'description': 'Manage verses of the Quran (Ayahs)',
+        },
+        {
+            'name': 'words',
+            'description': 'Manage words within Quranic verses',
+        },
+        {
+            'name': 'translations',
+            'description': 'Create, update and list Quran translations and their verse/ayah translations',
+        },
+        {
+            'name': 'recitations',
+            'description': 'Manage audio recitations of the Quran',
+        },
+        {
+            'name': 'phrases',
+            'description': 'Create and maintain phrases for the application',
+        },
+        {
+            'name': 'notifications',
+            'description': 'Endpoints related to user notifications',
+        },
+        {
+            'name': 'upload',
+            'description': 'Generic file-upload endpoints (JSON imports, subject uploads, etc.)',
+        },
+    ],
     # OTHER SETTINGS
 }
 

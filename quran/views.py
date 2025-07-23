@@ -485,22 +485,160 @@ class TranslationViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         data = serializer.data
-        # Paginate ayahs_translations, filtered by surah_uuid if provided
-        ayahs_translations_qs = instance.ayah_translations.all().order_by('ayah__number')
         surah_uuid = request.query_params.get('surah_uuid')
-        if surah_uuid:
-            ayahs_translations_qs = ayahs_translations_qs.filter(ayah__surah__uuid=surah_uuid)
+        if not surah_uuid:
+            return Response({'detail': 'surah_uuid query parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        ayahs_translations_qs = (
+            instance.ayah_translations
+            .select_related('ayah', 'ayah__surah')
+            .filter(ayah__surah__uuid=surah_uuid)
+            .order_by('ayah__number')
+        )
+
         paginator = CustomPageNumberPagination()
         page = paginator.paginate_queryset(ayahs_translations_qs, request)
         from .serializers import AyahTranslationNestedSerializer
         if page is not None:
             ayahs_translations = AyahTranslationNestedSerializer(page, many=True).data
-            data['ayahs_translations'] = ayahs_translations
+            data['ayahs'] = ayahs_translations
             return paginator.get_paginated_response(data)
-        else:
-            ayahs_translations = AyahTranslationNestedSerializer(ayahs_translations_qs, many=True).data
-            data['ayahs_translations'] = ayahs_translations
-            return Response(data)
+
+        ayahs_translations = AyahTranslationNestedSerializer(ayahs_translations_qs, many=True).data
+        data['ayahs'] = ayahs_translations
+        return Response(data)
+
+    # --- ADDED ACTION: ayah translations ---
+    
+    @extend_schema(
+        summary="List Ayah Translations related to Translations",
+        methods=["GET"],
+        parameters=[
+            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name='surah_uuid', description='Surah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
+        ]
+    )
+    @action(detail=False, methods=['get'], url_path='ayah')
+    def list_ayah_translations(self, request):
+        """
+        List AyahTranslation instances filtered by `translation_uuid`, `ayah_uuid`, or `surah_uuid`.
+        Mirrors the functionality previously provided by the AyahTranslationViewSet list endpoint.
+        """
+        queryset = AyahTranslation.objects.select_related('translation', 'ayah')
+        translation_uuid = request.query_params.get('translation_uuid')
+        ayah_uuid = request.query_params.get('ayah_uuid')
+        surah_uuid = request.query_params.get('surah_uuid')
+
+        if translation_uuid:
+            queryset = queryset.filter(translation__uuid=translation_uuid)
+        if ayah_uuid:
+            queryset = queryset.filter(ayah__uuid=ayah_uuid)
+        if surah_uuid:
+            queryset = queryset.filter(ayah__surah__uuid=surah_uuid)
+
+        paginator = CustomPageNumberPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        from .serializers import AyahTranslationSerializer
+        if page is not None:
+            serializer = AyahTranslationSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = AyahTranslationSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @list_ayah_translations.mapping.post
+    @extend_schema(
+        summary="Create or update (upsert) an Ayah Translation",
+        methods=["POST"],
+        request=AyahTranslationSerializer,
+        responses={201: None}
+    )
+    def create_ayah_translation(self, request):
+        """
+        Create a new AyahTranslation or update it if it already exists (upsert behaviour).
+        Expects `translation_uuid`, `ayah_uuid`, and `text` in the payload (or corresponding query parameters).
+        """
+        from .serializers import AyahTranslationSerializer
+        serializer = AyahTranslationSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        translation_uuid = serializer.validated_data.get('translation_uuid') or request.query_params.get('translation_uuid')
+        ayah_uuid = serializer.validated_data.get('ayah_uuid') or request.query_params.get('ayah_uuid')
+        text = serializer.validated_data.get('text')
+        bismillah = serializer.validated_data.get('bismillah', None)
+
+        if not translation_uuid or not ayah_uuid:
+            return Response({'detail': 'translation_uuid and ayah_uuid are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        AyahTranslation.objects.update_or_create(
+            ayah__uuid=ayah_uuid,
+            translation__uuid=translation_uuid,
+            defaults={
+                'text': text,
+                'bismillah': bismillah,
+                'creator': request.user
+            }
+        )
+        return Response(status=status.HTTP_201_CREATED)
+
+    # --- END ADDED ACTION ---
+
+    # --- NEW ACTION: Upsert ayah-translation via path params ---
+    @extend_schema(
+        summary="Create or update (upsert) a specific AyahTranslation",
+        description=(
+            "Provide the ayah's UUID in the URL path and the translation's UUID as the primary resource path. "
+            "Body requires only `text` (and optional `bismillah`). If an AyahTranslation already exists it will be "
+            "updated, otherwise it will be created."
+        ),
+        request=AyahTranslationSerializer,
+        methods=["PUT", "POST"],
+        responses={201: AyahTranslationSerializer, 200: AyahTranslationSerializer}
+    )
+    @action(detail=True, methods=["put", "post"], url_path=r"ayah/(?P<ayah_uuid>[^/.]+)")
+    def modify_ayah_translation(self, request, *args, **kwargs):
+        """
+        Upsert endpoint at
+            /translations/{translation_uuid}/ayah/{ayah_uuid}/
+
+        * `translation_uuid` – taken from the main URL (handled by viewset)
+        * `ayah_uuid` – path parameter captured by the regex in `url_path`
+
+        Body parameters:
+            text: str (required)
+            bismillah: bool (optional)
+
+        Returns the created/updated `AyahTranslation` representation.
+        """
+        from .serializers import AyahTranslationSerializer
+
+        translation: Translation = self.get_object()
+        ayah_uuid = kwargs.get("ayah_uuid")
+
+        if not ayah_uuid:
+            return Response({'detail': 'ayah_uuid is required in the URL.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = AyahTranslationSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        text = serializer.validated_data.get('text')
+        bismillah = serializer.validated_data.get('bismillah', None)
+
+        # Perform update or create
+        ayah_translation, created = AyahTranslation.objects.update_or_create(
+            ayah__uuid=ayah_uuid,
+            translation=translation,
+            defaults={
+                'text': text,
+                'bismillah': bismillah,
+                'creator': request.user
+            }
+        )
+
+        output_serializer = AyahTranslationSerializer(ayah_translation)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    # --- END NEW ACTION ---
 
 @extend_schema_view(
     list=extend_schema(

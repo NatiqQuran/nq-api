@@ -80,17 +80,33 @@ def import_translation_task(translation_data, user_id):
             status="published",
             language=translation_data["language"],
         )
+        # Build a lookup for Ayah objects of this mushaf keyed by (surah_number, ayah_number)
+        ayah_lookup = {
+            (a.surah.number, a.number): a.id
+            for a in Ayah.objects.filter(surah__mushaf=mushaf).only("id", "number", "surah__number").select_related("surah")
+        }
+
         ayah_translations = []
-        first_ayah = translation_data["surahs"][0]["ayah_translations"][0]['text'] if translation_data["surahs"] and translation_data["surahs"][0]["ayah_translations"] else ""
-        for surah in translation_data["surahs"]:
-            for ayah in surah["ayah_translations"]:
-                ayah_translations.append(AyahTranslation(
-                    creator_id=user.id,
-                    translation_id=translation.id,
-                    ayah_id=ayah["number"],
-                    text=ayah["text"],
-                    bismillah=first_ayah,
-                ))
+        # Root-level bismillah text (if provided) – used as default for all ayahs
+        default_bismillah = translation_data.get("bismillah_text")
+
+        for surah_data in translation_data["surahs"]:
+            surah_number = surah_data["number"]
+            for ayah_data in surah_data["ayah_translations"]:
+                ayah_number = ayah_data["number"]
+                ayah_id = ayah_lookup.get((surah_number, ayah_number))
+                if ayah_id is None:
+                    # Skip if corresponding ayah not found (data mismatch)
+                    continue
+                ayah_translations.append(
+                    AyahTranslation(
+                        creator_id=user.id,
+                        translation_id=translation.id,
+                        ayah_id=ayah_id,
+                        text=ayah_data["text"],
+                        bismillah=ayah_data.get("bismillah_text") or default_bismillah,
+                    )
+                )
         AyahTranslation.objects.bulk_create(ayah_translations)
     # Send notification to user
     Notification.objects.create(
