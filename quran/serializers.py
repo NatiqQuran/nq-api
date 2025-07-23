@@ -242,11 +242,10 @@ class AyahTranslationNestedSerializer(serializers.ModelSerializer):
 class TranslationSerializer(serializers.ModelSerializer):
     mushaf_uuid = serializers.SerializerMethodField()
     translator_uuid = serializers.SerializerMethodField()
-    ayahs_translations = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Translation
-        fields = ['uuid', 'mushaf_uuid', 'translator_uuid', 'language', 'release_date', 'source', 'status', 'ayahs_translations']
+        fields = ['uuid', 'mushaf_uuid', 'translator_uuid', 'language', 'release_date', 'source', 'status']
         read_only_fields = ['creator']
 
     def get_mushaf_uuid(self, obj):
@@ -254,12 +253,6 @@ class TranslationSerializer(serializers.ModelSerializer):
 
     def get_translator_uuid(self, obj):
         return str(obj.translator.uuid) if obj.translator else None
-
-    def get_ayahs_translations(self, obj):
-        from .serializers import AyahTranslationNestedSerializer
-        ayah_translations = obj.ayah_translations.all()
-        return AyahTranslationNestedSerializer(ayah_translations, many=True).data
-
     def to_internal_value(self, data):
         # Extract UUIDs for input
         mushaf_uuid = data.get('mushaf_uuid')
