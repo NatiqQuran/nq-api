@@ -1,9 +1,27 @@
 from rest_framework import permissions, viewsets, status, filters
 from rest_framework.response import Response
-from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, Recitation
+from quran.models import (
+    Mushaf,
+    Surah,
+    Ayah,
+    Word,
+    Translation,
+    AyahTranslation,
+    Recitation,
+    AyahBreaker,
+)
 from quran.serializers import (
-    AyahSerializerView, MushafSerializer, SurahSerializer, SurahDetailSerializer, AyahSerializer, 
-    WordSerializer, TranslationSerializer, AyahTranslationSerializer, AyahAddSerializer, RecitationSerializer, TranslationListSerializer
+    AyahSerializerView,
+    MushafSerializer,
+    SurahSerializer,
+    SurahDetailSerializer,
+    AyahSerializer,
+    WordSerializer,
+    TranslationSerializer,
+    AyahTranslationSerializer,
+    AyahAddSerializer,
+    RecitationSerializer,
+    TranslationListSerializer,
 )
 
 from core import permissions as core_permissions
@@ -46,7 +64,195 @@ class MushafViewSet(viewsets.ModelViewSet):
         "status": ["published"]
     }
     lookup_field = "uuid"
-    
+
+    # --- NEW ACTION: Ayah map for a Mushaf ---
+    @extend_schema(
+        summary="Map of all ayahs for the specified Mushaf",
+        description=(
+            "Returns a flat list containing an entry for **every** ayah that belongs to the selected "
+            "mushaf. The response schema is:\n"
+            "```json\n[\n  {\n    \"uuid\": \"str\",            // Ayah UUID\n    \"surah\": \"int\",           // Surah number\n    \"ayah\": \"int\",            // Ayah number within the surah\n    \"juz\": \"int|null\",        // Juz number (null if unknown)\n    \"hizb\": \"int|null\",       // Hizb quarter number (null if unknown)\n    \"ruku\": \"int|null\",       // Ruku number (null if unknown)\n    \"page\": \"int|null\"        // Page number in the standard Madinah mushaf (null if unknown)\n  },\n  ...\n]\n```"
+        ),
+        methods=["GET"],
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["get"], url_path=r"map/(?P<mushaf_uuid>[^/.]+)")
+    def ayah_map(self, request, *args, **kwargs):
+        """Return a simplified mapping of every ayah for the specified Mushaf UUID (path param)."""
+        from django.shortcuts import get_object_or_404
+        mushaf_uuid = kwargs.get("mushaf_uuid")
+        mushaf = get_object_or_404(Mushaf, uuid=mushaf_uuid)
+
+        # Gather all ayahs (ordered) once
+        ayah_qs = (
+            Ayah.objects.filter(surah__mushaf=mushaf)
+            .select_related("surah")
+            .order_by("surah__number", "number", "id")
+        )
+
+        # Fetch Ayah-level breakers only for these ayahs
+        breakers_qs = (
+            AyahBreaker.objects
+            .filter(ayah__in=ayah_qs)
+            .select_related("ayah", "ayah__surah")
+            .order_by("ayah__surah__number", "ayah__number")
+        )
+
+        # Group breakers by ayah_id for O(1) lookup per iteration
+        from collections import defaultdict
+        breakers_by_ayah = defaultdict(list)
+        for br in breakers_qs:
+            breakers_by_ayah[br.ayah_id].append(br.name.lower())
+
+        # Running counters for each breaker type
+        counters = {"juz": 0, "hizb": 0, "ruku": 0, "page": 0}
+
+        data = []
+        for ayah in ayah_qs:
+            # Increment counters for breakers that BEGIN at this ayah
+            for br_name in breakers_by_ayah.get(ayah.id, []):
+                key = br_name.split()[0]  # take first token (e.g. "juz", "hizb")
+                if key in counters:
+                    counters[key] += 1
+
+            data.append({
+                "uuid": str(ayah.uuid),
+                "surah": ayah.surah.number,
+                "ayah": ayah.number,
+                "juz": counters["juz"] or None,
+                "hizb": counters["hizb"] or None,
+                "ruku": counters["ruku"] or None,
+                "page": counters["page"] or None,
+            })
+
+        return Response(data)
+
+    # --- END NEW ACTION ---
+
+    # --- NEW ACTION: Import ayah breakers (e.g., pages) for a Mushaf ---
+    @extend_schema(
+        summary="Import Ayah Breakers for the specified Mushaf",
+        description=(
+            "Accepts a JSON array of strings with the format \"{surah}:{ayah}\" that denote the ayah "
+            "at which a new breaker (page by default) begins. Existing breakers whose names start with the "
+            "provided breaker type (default: 'page') will be removed before importing the new ones.\n\n"
+            "Example request body (application/json):\n\n"
+            "[\n  \"2:1\",\n  \"2:6\",\n  \"2:17\"\n]"
+        ),
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "description": "Text/JSON file containing a list of breakers (e.g. ['2:1', '2:6'])."
+                    }
+                },
+                "required": ["file"]
+            }
+        },
+        methods=["POST"],
+        parameters=[
+            OpenApiParameter(
+                name="type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Breaker type (e.g., page, juz, hizb, ruku). Defaults to 'page'.",
+            ),
+        ],
+        responses={201: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["post"], url_path=r"import_breakers/(?P<mushaf_uuid>[^/.]+)", parser_classes=[MultiPartParser, FormParser])
+    def import_breakers(self, request, *args, **kwargs):
+        """Import (upsert) ayah breakers for this Mushaf.
+
+        The endpoint expects the request body to be a JSON list of strings, each representing the
+        starting ayah of a breaker in the form "{surah}:{ayah}". Only the first token in the breaker
+        name is significant for the existing `ayah_map` logic, so breakers will be named using the
+        pattern "{breaker_type} {index}", where `breaker_type` defaults to "page".
+        """
+        from django.db import transaction
+        from django.shortcuts import get_object_or_404
+        mushaf_uuid = kwargs.get("mushaf_uuid")
+        mushaf = get_object_or_404(Mushaf, uuid=mushaf_uuid)
+
+        breaker_type = request.query_params.get("type", "page").lower()
+
+        # Expect a file upload similar to other import endpoints
+        BREAKERS_UPLOAD_MAX_SIZE = 5 * 1024 * 1024  # 5 MB should be plenty
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"detail": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+        if file.size > BREAKERS_UPLOAD_MAX_SIZE:
+            return Response({"detail": f"File size exceeds the {BREAKERS_UPLOAD_MAX_SIZE} bytes limit."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            content = file.read().decode("utf-8").strip()
+            # Try JSON first
+            import json as _json
+            breakers_input = _json.loads(content)
+            if not isinstance(breakers_input, list):
+                raise ValueError
+        except Exception:
+            # Fallback: treat as newline-separated list
+            breakers_input = [line.strip() for line in content.splitlines() if line.strip()]
+
+        if not breakers_input:
+            return Response({"detail": "No breaker entries found in file."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Build lookup for surahs within this mushaf to avoid repeated DB hits
+        surahs_by_number = {
+            s.number: s for s in Surah.objects.filter(mushaf=mushaf).only("id", "number")
+        }
+
+        created, errors = 0, []
+
+        with transaction.atomic():
+            # Remove existing breakers for this mushaf of the same type to avoid duplicates
+            AyahBreaker.objects.filter(
+                ayah__surah__mushaf=mushaf, name__istartswith=breaker_type
+            ).delete()
+
+            for idx, ref in enumerate(breakers_input, start=1):
+                try:
+                    surah_num_str, ayah_num_str = ref.split(":", 1)
+                    surah_num = int(surah_num_str)
+                    ayah_num = int(ayah_num_str)
+                except (ValueError, AttributeError):
+                    errors.append({"entry": ref, "error": "Invalid format, expected 'surah:ayah'."})
+                    continue
+
+                surah = surahs_by_number.get(surah_num)
+                if not surah:
+                    errors.append({"entry": ref, "error": f"Surah {surah_num} not found in mushaf."})
+                    continue
+
+                try:
+                    ayah = Ayah.objects.only("id").get(surah=surah, number=ayah_num)
+                except Ayah.DoesNotExist:
+                    errors.append({"entry": ref, "error": f"Ayah {ayah_num} not found in surah {surah_num}."})
+                    continue
+
+                AyahBreaker.objects.create(
+                    creator=request.user,
+                    ayah=ayah,
+                    name=f"{breaker_type}"
+                )
+                created += 1
+
+        return Response(
+            {
+                "detail": f"Imported {created} {breaker_type} breakers.",
+                "created": created,
+                "errors": errors,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    # --- END NEW ACTION ---
+
     def get_queryset(self):
         # Optimize: Only fetch fields needed for the list action
         if getattr(self, 'action', None) == 'list':
@@ -120,7 +326,7 @@ class MushafViewSet(viewsets.ModelViewSet):
                 name="mushaf",
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                required=False,
+                required=True,
                 description="Short name of the Mushaf to filter Surahs by."
             )
         ]
@@ -172,8 +378,10 @@ class SurahViewSet(viewsets.ModelViewSet):
             queryset = queryset.select_related('mushaf').prefetch_related('ayahs__words').only(*surah_fields)
         else:
             queryset = queryset.select_related('mushaf').only(*surah_fields)
-        mushaf_short_name = self.request.query_params.get('mushaf', None)
-        if mushaf_short_name is not None:
+        mushaf_short_name = self.request.query_params.get('mushaf')
+        if self.action == 'list' and not mushaf_short_name:
+            raise serializers.ValidationError({'mushaf': 'This query parameter is required.'})
+        if mushaf_short_name:
             queryset = queryset.filter(mushaf__short_name=mushaf_short_name)
         return queryset.order_by('number')
 
@@ -346,7 +554,7 @@ class WordViewSet(viewsets.ModelViewSet):
                 name="mushaf_uuid",
                 type=OpenApiTypes.UUID,
                 location=OpenApiParameter.QUERY,
-                required=False,
+                required=True,
                 description="UUID of the Mushaf to filter Translations by."
             ),
             OpenApiParameter(
@@ -401,10 +609,12 @@ class TranslationViewSet(viewsets.ModelViewSet):
             'uuid', 'mushaf', 'translator', 'language', 'release_date', 'source', 'status', 'creator'
         ]
         queryset = Translation.objects.select_related('mushaf', 'translator').only(*translation_fields)
-        mushaf_uuid = self.request.query_params.get('mushaf_uuid', None)
-        language = self.request.query_params.get('language', None)
-        if mushaf_uuid is not None:
+        mushaf_uuid = self.request.query_params.get('mushaf_uuid')
+        if self.action == 'list' and not mushaf_uuid:
+            raise serializers.ValidationError({'mushaf_uuid': 'This query parameter is required.'})
+        if mushaf_uuid:
             queryset = queryset.filter(mushaf__uuid=mushaf_uuid)
+        language = self.request.query_params.get('language', None)
         if language is not None:
             queryset = queryset.filter(language=language)
         return queryset
@@ -743,7 +953,7 @@ class AyahTranslationViewSet(viewsets.ModelViewSet):
                 name="mushaf_uuid",
                 type=OpenApiTypes.UUID,
                 location=OpenApiParameter.QUERY,
-                required=False,
+                required=True,
                 description="UUID of the Mushaf to filter Recitations by."
             ),
             OpenApiParameter(
@@ -788,8 +998,10 @@ class RecitationViewSet(viewsets.ModelViewSet):
         ]
         queryset = Recitation.objects.select_related('mushaf', 'surah', 'reciter_account', 'file').only(*recitation_fields)
         # Filter by mushaf if provided
-        mushaf_uuid = self.request.query_params.get('mushaf_uuid', None)
-        if mushaf_uuid is not None:
+        mushaf_uuid = self.request.query_params.get('mushaf_uuid')
+        if self.action == 'list' and not mushaf_uuid:
+            raise serializers.ValidationError({'mushaf_uuid': 'This query parameter is required.'})
+        if mushaf_uuid:
             queryset = queryset.filter(mushaf__uuid=mushaf_uuid)
         # Filter by reciter if provided
         reciter_uuid = self.request.query_params.get('reciter_uuid', None)
