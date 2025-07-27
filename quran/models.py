@@ -143,12 +143,10 @@ class Recitation(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='recitations')
     mushaf = models.ForeignKey(Mushaf, on_delete=models.CASCADE, related_name='recitations')
-    surah = models.ForeignKey(Surah, on_delete=models.CASCADE, related_name='recitations')
     reciter_account = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='recited_works')
     recitation_date = models.DateField()
     recitation_location = models.TextField()
     duration = models.DurationField()
-    file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='recitations')
     recitation_type = models.TextField()
     status = models.CharField(max_length=50, choices=Status.choices, default=Status.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -157,9 +155,24 @@ class Recitation(models.Model):
     def __str__(self):
         return f"Recitation by {self.reciter_account.username} on {self.recitation_date}"
 
-class RecitationTimestamp(models.Model):
+class RecitationSurah(models.Model):
+    """Associates a Recitation with a specific Surah and the corresponding audio file."""
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    recitation = models.ForeignKey(Recitation, on_delete=models.CASCADE, related_name='timestamps')
+    recitation = models.ForeignKey(Recitation, on_delete=models.CASCADE, related_name='recitation_surahs')
+    surah = models.ForeignKey(Surah, on_delete=models.CASCADE, related_name='recitation_surahs')
+    file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='recitation_surahs')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['recitation', 'surah']
+
+    def __str__(self):
+        return f"{self.recitation} - Surah {self.surah.number}"
+
+class RecitationSurahTimestamp(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    recitation_surah = models.ForeignKey(RecitationSurah, on_delete=models.CASCADE, related_name='timestamps')
     start_time = models.TimeField()
     end_time = models.TimeField(null=True, blank=True)
     word = models.ForeignKey(Word, on_delete=models.CASCADE, related_name='recitation_timestamps', null=True, blank=True)
@@ -170,5 +183,5 @@ class RecitationTimestamp(models.Model):
         ordering = ['start_time']
 
     def __str__(self):
-        return f"Timestamp for {self.recitation} at {self.start_time}"
+        return f"Timestamp for {self.recitation_surah} at {self.start_time}"
 
