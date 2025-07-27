@@ -9,6 +9,8 @@ from quran.models import (
     AyahTranslation,
     Recitation,
     AyahBreaker,
+    RecitationSurah,
+    RecitationSurahTimestamp,
 )
 from quran.serializers import (
     AyahSerializerView,
@@ -32,12 +34,12 @@ from core.pagination import CustomPageNumberPagination
 from rest_framework.decorators import action
 import json
 from rest_framework.parsers import MultiPartParser, FormParser
-from quran.models import RecitationTimestamp
+from quran.models import RecitationSurahTimestamp
 from rest_framework import serializers
 
 @extend_schema_view(
-    list=extend_schema(summary="List all Mushafs (Quranic manuscripts/editions)"),
-    retrieve=extend_schema(summary="Retrieve a specific Mushaf by UUID"),
+    list=extend_schema(summary="List all Mushafs (Quranic manuscripts/editions)", tags=["general", "mushafs"]),
+    retrieve=extend_schema(summary="Retrieve a specific Mushaf by UUID", tags=["general", "mushafs"]),
     create=extend_schema(summary="Create a new Mushaf record"),
     update=extend_schema(summary="Update an existing Mushaf record"),
     partial_update=extend_schema(summary="Partially update a Mushaf record"),
@@ -329,9 +331,10 @@ class MushafViewSet(viewsets.ModelViewSet):
                 required=True,
                 description="Short name of the Mushaf to filter Surahs by."
             )
-        ]
+        ],
+        tags=["general", "surahs"],
     ),
-    retrieve=extend_schema(summary="Retrieve a specific Surah by UUID"),
+    retrieve=extend_schema(summary="Retrieve a specific Surah by UUID", tags=["general", "surahs"]),
     create=extend_schema(summary="Create a new Surah record"),
     update=extend_schema(summary="Update an existing Surah record"),
     partial_update=extend_schema(summary="Partially update a Surah record"),
@@ -564,7 +567,8 @@ class WordViewSet(viewsets.ModelViewSet):
                 required=False,
                 description="Language code to filter Translations by."
             )
-        ]
+        ],
+        tags=["general", "translations"],
     ),
     retrieve=extend_schema(
         summary="Retrieve a specific Translation by UUID",
@@ -576,7 +580,8 @@ class WordViewSet(viewsets.ModelViewSet):
                 required=False,
                 description="UUID of the Surah to filter ayahs_translations by."
             )
-        ]
+        ],
+        tags=["general", "translations"],
     ),
     create=extend_schema(summary="Create a new Translation record"),
     update=extend_schema(summary="Update an existing Translation record"),
@@ -994,9 +999,9 @@ class RecitationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         recitation_fields = [
-            'uuid', 'mushaf', 'surah', 'reciter_account', 'recitation_date', 'recitation_location', 'duration', 'file', 'recitation_type', 'status', 'creator'
+            'uuid', 'mushaf', 'reciter_account', 'recitation_date', 'recitation_location', 'duration', 'recitation_type', 'status', 'creator'
         ]
-        queryset = Recitation.objects.select_related('mushaf', 'surah', 'reciter_account', 'file').only(*recitation_fields)
+        queryset = Recitation.objects.select_related('mushaf', 'reciter_account').only(*recitation_fields)
         # Filter by mushaf if provided
         mushaf_uuid = self.request.query_params.get('mushaf_uuid')
         if self.action == 'list' and not mushaf_uuid:
@@ -1008,29 +1013,12 @@ class RecitationViewSet(viewsets.ModelViewSet):
         if reciter_uuid is not None:
             queryset = queryset.filter(reciter_account__uuid=reciter_uuid)
         if self.action == 'retrieve':
-            queryset = queryset.prefetch_related('timestamps')
+            queryset = queryset.prefetch_related('recitation_surahs__timestamps')
         return queryset
 
     def create(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        recitation = None
-        if response.status_code in (200, 201):
-            # Get the created recitation instance
-            recitation_uuid = response.data.get('uuid')
-            if recitation_uuid:
-                try:
-                    recitation = Recitation.objects.get(uuid=recitation_uuid)
-                except Recitation.DoesNotExist:
-                    recitation = None
-        if recitation and not recitation.timestamps.exists():
-            from quran.tasks import generate_recitation_timestamps_task
-            generate_recitation_timestamps_task.delay(recitation)
-            return Response({
-                'detail': 'Generating recitation timestamps',
-                }, status=status.HTTP_202_ACCEPTED)
-        return response
+        return super().create(request, *args, **kwargs)
 
-    # Remove forced-alignment logic from retrieve
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
@@ -1053,3 +1041,173 @@ class RecitationViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, partial=True, **kwargs)
+
+    # ---- New Action: Upload Surah audio & timestamps ----
+    @extend_schema(
+        summary="Upload a surah audio file and optional word-level timestamps for a Recitation",
+        description=(
+            "Accepts a multipart/form-data request with the following parts:\n"
+            "• file: The MP3 audio file for the surah.\n"
+            "• surah_uuid: UUID of the surah this file represents.\n"
+            "• word_timestamps (optional): JSON string array of objects with start, end, word_uuid."
+        ),
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "file": {"type": "string", "format": "binary"},
+                    "surah_uuid": {"type": "string"},
+                    "word_timestamps": {"type": "string", "description": "JSON list, optional"},
+                },
+                "required": ["file", "surah_uuid"],
+            }
+        },
+        responses={201: OpenApiTypes.OBJECT},
+        methods=["POST"],
+    )
+    @action(detail=False, methods=["post"], url_path=r"upload/(?P<recitation_uuid>[^/.]+)", parser_classes=[MultiPartParser, FormParser])
+    def upload(self, request, *args, **kwargs):
+        """Attach a surah-level audio file (and optional timestamps) to an existing Recitation."""
+        import uuid as _uuid
+        from django.db import transaction
+        recitation_uuid = kwargs.get("recitation_uuid")
+        if not recitation_uuid:
+            return Response({"detail": "recitation_uuid path parameter missing."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.shortcuts import get_object_or_404
+        recitation: Recitation = get_object_or_404(Recitation, uuid=recitation_uuid)
+
+        # Check permissions against this object manually since we're in a detail=False action
+        self.check_object_permissions(request, recitation)
+
+        file_obj = request.FILES.get("file")
+        surah_uuid = request.data.get("surah_uuid")
+        word_ts_raw = request.data.get("word_timestamps")
+
+        if not file_obj:
+            return Response({"file": "This field is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not surah_uuid:
+            return Response({"surah_uuid": "This field is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate surah
+        try:
+            surah = Surah.objects.get(uuid=surah_uuid)
+        except Surah.DoesNotExist:
+            return Response({"detail": "Surah not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Basic permission: surah must belong to the same mushaf as the recitation
+        if surah.mushaf_id != recitation.mushaf_id:
+            return Response({"detail": "Surah does not belong to the same Mushaf as the recitation."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Parse word timestamps (if provided)
+        word_timestamps = None
+        if word_ts_raw:
+            try:
+                word_timestamps = json.loads(word_ts_raw)
+                if not isinstance(word_timestamps, list):
+                    raise ValueError
+            except ValueError:
+                return Response({"word_timestamps": "Invalid JSON – expected list."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Upload file to S3 and create file record (same as FileUploadView)
+        import hashlib
+        import os
+        from core.models import File as CoreFile
+        from core.views import Storage
+        
+        # Calculate file hash
+        def calculate_file_hash(file_obj):
+            sha256_hash = hashlib.sha256()
+            for chunk in file_obj.chunks():
+                sha256_hash.update(chunk)
+            return sha256_hash.hexdigest()
+
+        file_hash = calculate_file_hash(file_obj)
+        file_obj.seek(0)  # Reset file pointer
+
+        # Check for duplicate file
+        existing_file = CoreFile.objects.filter(file_hash=file_hash).first()
+        if existing_file:
+            new_file = existing_file
+        else:
+            # Get file extension and validate
+            original_filename = file_obj.name
+            _, ext = os.path.splitext(original_filename)
+            ext = ext[1:].lower()
+            
+            if ext != 'mp3':
+                return Response({"error": "Invalid file type. Expected mp3"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Generate UUID for the file
+            file_uuid = str(_uuid.uuid4())
+            new_filename = f"{file_uuid}.{ext}"
+
+            # Save file to S3 with public access in recitations folder
+            storage = Storage()
+            storage.location = "recitations"  # Set the folder for recitations
+            storage.save(new_filename, file_obj)
+
+            # Create file record in database
+            new_file = CoreFile.objects.create(
+                format=ext,
+                size=file_obj.size,
+                s3_uuid=file_uuid,
+                upload_name=original_filename,
+                file_hash=file_hash,
+                uploader=request.user,
+            )
+
+        with transaction.atomic():
+
+            # Create / get RecitationSurah
+            recitation_surah, _ = RecitationSurah.objects.get_or_create(
+                recitation=recitation,
+                surah=surah,
+                defaults={"file": new_file},
+            )
+            # If it already existed but had no file, attach
+            if not recitation_surah.file_id:
+                recitation_surah.file = new_file
+                recitation_surah.save(update_fields=["file"])
+
+            # Create timestamps if any
+            if word_timestamps:
+                from quran.models import Word
+                from datetime import datetime
+
+                ts_objs = []
+                for ts in word_timestamps:
+                    try:
+                        start_time = datetime.strptime(ts["start"], "%H:%M:%S.%f")
+                        end_time = (
+                            datetime.strptime(ts["end"], "%H:%M:%S.%f") if ts.get("end") else None
+                        )
+                        word = None
+                        if ts.get("word_uuid"):
+                            word = Word.objects.filter(uuid=ts["word_uuid"]).first()
+                        ts_objs.append(
+                            RecitationSurahTimestamp(
+                                recitation_surah=recitation_surah,
+                                start_time=start_time,
+                                end_time=end_time,
+                                word=word,
+                            )
+                        )
+                    except Exception:
+                        continue
+                if ts_objs:
+                    RecitationSurahTimestamp.objects.bulk_create(ts_objs)
+
+            # If no timestamps were provided, kick off forced-alignment generation
+            if not word_timestamps:
+                # Ensure the main recitation has an audio file reference for the task
+                # No need to attach file to Recitation; file is stored on RecitationSurah.
+
+                from quran.tasks import generate_recitation_surah_timestamps_task
+                transaction.on_commit(lambda: generate_recitation_surah_timestamps_task.delay(
+                    recitation, 
+                    surah, 
+                    new_file
+                ))
+
+        return Response({"detail": "Upload processed successfully."}, status=status.HTTP_201_CREATED)

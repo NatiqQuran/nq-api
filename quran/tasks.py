@@ -1,5 +1,14 @@
 from celery import shared_task
-from quran.models import Mushaf, Surah, Ayah, Word, Translation, AyahTranslation, RecitationTimestamp
+from quran.models import (
+    Mushaf,
+    Surah,
+    Ayah,
+    Word,
+    Translation,
+    AyahTranslation,
+    RecitationSurah,
+    RecitationSurahTimestamp,
+)
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.conf import settings
@@ -122,10 +131,28 @@ def import_translation_task(translation_data, user_id):
     return f'Translation {translation.uuid} imported successfully.'
 
 @shared_task(serializer="pickle")
-def generate_recitation_timestamps_task(recitation):
-    audio_url = recitation.file.get_absolute_url()
+def generate_recitation_surah_timestamps_task(recitation, surah, file_obj):
+    from quran.models import RecitationSurah, RecitationSurahTimestamp, Word
+    
+    # Get or create the RecitationSurah association
+    recitation_surah, created = RecitationSurah.objects.get_or_create(
+        recitation=recitation,
+        surah=surah,
+        defaults={"file": file_obj}
+    )
+    
+    # If it already existed but had no file, attach the file
+    if not created and not recitation_surah.file_id:
+        recitation_surah.file = file_obj
+        recitation_surah.save(update_fields=["file"])
+    
+    # Construct the audio URL using s3_uuid
+    audio_url = file_obj.get_absolute_url()
+    print(f"File obnj: {file_obj}")
+    print(f"Audio URL: {audio_url}")
+
     # Get all words in the surah, ordered by ayah number and id (creation order)
-    words = list(Word.objects.filter(ayah__surah=recitation.surah).order_by('ayah__number', 'id'))
+    words = list(Word.objects.filter(ayah__surah=surah).order_by('ayah__number', 'id'))
     text = ' '.join([w.text for w in words])
     user = getattr(recitation, 'creator', None)
     try:
@@ -159,8 +186,15 @@ def generate_recitation_timestamps_task(recitation):
                         word_obj = words[word_idx]
                         start_time = (datetime.min + timedelta(seconds=word_data['start'])).time()
                         end_time = (datetime.min + timedelta(seconds=word_data['end'])).time() if word_data.get('end') else None
-                        RecitationTimestamp.objects.create(
-                            recitation=recitation,
+                        # Ensure we have a RecitationSurah for this recitation/surah combo
+                        # recitation_surah, _ = RecitationSurah.objects.get_or_create(
+                        #     recitation=recitation,
+                        #     surah=surah,
+                        #     defaults={"file_id": getattr(recitation, "file_id", None)},
+                        # )
+
+                        RecitationSurahTimestamp.objects.create(
+                            recitation_surah=recitation_surah,
                             start_time=start_time,
                             end_time=end_time,
                             word=word_obj

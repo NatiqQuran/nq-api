@@ -178,6 +178,10 @@ SPECTACULAR_SETTINGS = {
     # Tag order and descriptions for the OpenAPI schema
     'TAGS': [
         {
+            'name': 'general',
+            'description': 'General purpose endpoints',
+        },
+        {
             'name': 'auth',
             'description': 'Authentication and authorization endpoints (login, logout, register, token management)',
         },
