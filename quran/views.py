@@ -876,7 +876,6 @@ class RecitationViewSet(viewsets.ModelViewSet):
         description=(
             "Accepts a multipart/form-data request with the following parts:\n"
             "• file: The MP3 audio file for the surah.\n"
-            "• surah_uuid: UUID of the surah this file represents.\n"
             "• word_timestamps (optional): JSON string array of objects with start, end, word_uuid."
         ),
         request={
@@ -884,10 +883,9 @@ class RecitationViewSet(viewsets.ModelViewSet):
                 "type": "object",
                 "properties": {
                     "file": {"type": "string", "format": "binary"},
-                    "surah_uuid": {"type": "string"},
                     "word_timestamps": {"type": "string", "description": "JSON list, optional"},
                 },
-                "required": ["file", "surah_uuid"],
+                "required": ["file"],
             }
         },
         responses={201: OpenApiTypes.OBJECT},
@@ -932,53 +930,12 @@ class RecitationViewSet(viewsets.ModelViewSet):
             except ValueError:
                 return Response({"word_timestamps": "Invalid JSON – expected list."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Upload file to S3 and create file record (same as FileUploadView)
-        import hashlib
-        import os
-        from core.models import File as CoreFile
-        from core.views import Storage
-        
-        # Calculate file hash
-        def calculate_file_hash(file_obj):
-            sha256_hash = hashlib.sha256()
-            for chunk in file_obj.chunks():
-                sha256_hash.update(chunk)
-            return sha256_hash.hexdigest()
-
-        file_hash = calculate_file_hash(file_obj)
-        file_obj.seek(0)  # Reset file pointer
-
-        # Check for duplicate file
-        existing_file = CoreFile.objects.filter(file_hash=file_hash).first()
-        if existing_file:
-            new_file = existing_file
-        else:
-            # Get file extension and validate
-            original_filename = file_obj.name
-            _, ext = os.path.splitext(original_filename)
-            ext = ext[1:].lower()
-            
-            if ext != 'mp3':
-                return Response({"error": "Invalid file type. Expected mp3"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Generate UUID for the file
-            file_uuid = str(_uuid.uuid4())
-            new_filename = f"{file_uuid}.{ext}"
-
-            # Save file to S3 with public access in recitations folder
-            storage = Storage()
-            storage.location = "recitations"  # Set the folder for recitations
-            storage.save(new_filename, file_obj)
-
-            # Create file record in database
-            new_file = CoreFile.objects.create(
-                format=ext,
-                size=file_obj.size,
-                s3_uuid=file_uuid,
-                upload_name=original_filename,
-                file_hash=file_hash,
-                uploader=request.user,
-            )
+        # Upload file to S3 and create file record
+        from core.utils import upload_mp3_to_s3
+        try:
+            new_file = upload_mp3_to_s3(file_obj, request.user, folder="recitations")
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
 
