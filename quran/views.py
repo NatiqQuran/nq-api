@@ -78,12 +78,10 @@ class MushafViewSet(viewsets.ModelViewSet):
         methods=["GET"],
         responses={200: OpenApiTypes.OBJECT},
     )
-    @action(detail=False, methods=["get"], url_path=r"map/(?P<mushaf_uuid>[^/.]+)")
+    @action(detail=True, methods=["get"], url_path="map")
     def ayah_map(self, request, *args, **kwargs):
         """Return a simplified mapping of every ayah for the specified Mushaf UUID (path param)."""
-        from django.shortcuts import get_object_or_404
-        mushaf_uuid = kwargs.get("mushaf_uuid")
-        mushaf = get_object_or_404(Mushaf, uuid=mushaf_uuid)
+        mushaf = self.get_object()
 
         # Gather all ayahs (ordered) once
         ayah_qs = (
@@ -166,7 +164,7 @@ class MushafViewSet(viewsets.ModelViewSet):
         ],
         responses={201: OpenApiTypes.OBJECT},
     )
-    @action(detail=False, methods=["post"], url_path=r"import_breakers/(?P<mushaf_uuid>[^/.]+)", parser_classes=[MultiPartParser, FormParser])
+    @action(detail=True, methods=["post"], url_path="import_breakers", parser_classes=[MultiPartParser, FormParser])
     def import_breakers(self, request, *args, **kwargs):
         """Import (upsert) ayah breakers for this Mushaf.
 
@@ -176,9 +174,7 @@ class MushafViewSet(viewsets.ModelViewSet):
         pattern "{breaker_type} {index}", where `breaker_type` defaults to "page".
         """
         from django.db import transaction
-        from django.shortcuts import get_object_or_404
-        mushaf_uuid = kwargs.get("mushaf_uuid")
-        mushaf = get_object_or_404(Mushaf, uuid=mushaf_uuid)
+        mushaf = self.get_object()
 
         breaker_type = request.query_params.get("type", "page").lower()
 
@@ -695,7 +691,6 @@ class TranslationViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    # --- ADDED: Paginated ayahs_translations in retrieve ---
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
@@ -723,82 +718,6 @@ class TranslationViewSet(viewsets.ModelViewSet):
         data['ayahs'] = ayahs_translations
         return Response(data)
 
-    # --- ADDED ACTION: ayah translations ---
-    
-    @extend_schema(
-        summary="List Ayah Translations related to Translations",
-        methods=["GET"],
-        parameters=[
-            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='surah_uuid', description='Surah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-        ]
-    )
-    @action(detail=False, methods=['get'], url_path='ayah')
-    def list_ayah_translations(self, request):
-        """
-        List AyahTranslation instances filtered by `translation_uuid`, `ayah_uuid`, or `surah_uuid`.
-        Mirrors the functionality previously provided by the AyahTranslationViewSet list endpoint.
-        """
-        queryset = AyahTranslation.objects.select_related('translation', 'ayah')
-        translation_uuid = request.query_params.get('translation_uuid')
-        ayah_uuid = request.query_params.get('ayah_uuid')
-        surah_uuid = request.query_params.get('surah_uuid')
-
-        if translation_uuid:
-            queryset = queryset.filter(translation__uuid=translation_uuid)
-        if ayah_uuid:
-            queryset = queryset.filter(ayah__uuid=ayah_uuid)
-        if surah_uuid:
-            queryset = queryset.filter(ayah__surah__uuid=surah_uuid)
-
-        paginator = CustomPageNumberPagination()
-        page = paginator.paginate_queryset(queryset, request)
-        from .serializers import AyahTranslationSerializer
-        if page is not None:
-            serializer = AyahTranslationSerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
-
-        serializer = AyahTranslationSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    @list_ayah_translations.mapping.post
-    @extend_schema(
-        summary="Create or update (upsert) an Ayah Translation",
-        methods=["POST"],
-        request=AyahTranslationSerializer,
-        responses={201: None}
-    )
-    def create_ayah_translation(self, request):
-        """
-        Create a new AyahTranslation or update it if it already exists (upsert behaviour).
-        Expects `translation_uuid`, `ayah_uuid`, and `text` in the payload (or corresponding query parameters).
-        """
-        from .serializers import AyahTranslationSerializer
-        serializer = AyahTranslationSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        translation_uuid = serializer.validated_data.get('translation_uuid') or request.query_params.get('translation_uuid')
-        ayah_uuid = serializer.validated_data.get('ayah_uuid') or request.query_params.get('ayah_uuid')
-        text = serializer.validated_data.get('text')
-        bismillah = serializer.validated_data.get('bismillah', None)
-
-        if not translation_uuid or not ayah_uuid:
-            return Response({'detail': 'translation_uuid and ayah_uuid are required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        AyahTranslation.objects.update_or_create(
-            ayah__uuid=ayah_uuid,
-            translation__uuid=translation_uuid,
-            defaults={
-                'text': text,
-                'bismillah': bismillah,
-                'creator': request.user
-            }
-        )
-        return Response(status=status.HTTP_201_CREATED)
-
-    # --- END ADDED ACTION ---
-
-    # --- NEW ACTION: Upsert ayah-translation via path params ---
     @extend_schema(
         summary="Create or update (upsert) a specific AyahTranslation",
         description=(
@@ -806,11 +725,20 @@ class TranslationViewSet(viewsets.ModelViewSet):
             "Body requires only `text` (and optional `bismillah`). If an AyahTranslation already exists it will be "
             "updated, otherwise it will be created."
         ),
-        request=AyahTranslationSerializer,
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "bismillah": {"type": "boolean"}
+                },
+                "required": ["text"]
+            }
+        },
         methods=["PUT", "POST"],
         responses={201: AyahTranslationSerializer, 200: AyahTranslationSerializer}
     )
-    @action(detail=True, methods=["put", "post"], url_path=r"ayah/(?P<ayah_uuid>[^/.]+)")
+    @action(detail=True, methods=["put", "post"], url_path="ayah/(?P<ayah_uuid>[^/.]+)")
     def modify_ayah_translation(self, request, *args, **kwargs):
         """
         Upsert endpoint at
@@ -829,9 +757,6 @@ class TranslationViewSet(viewsets.ModelViewSet):
 
         translation: Translation = self.get_object()
         ayah_uuid = kwargs.get("ayah_uuid")
-
-        if not ayah_uuid:
-            return Response({'detail': 'ayah_uuid is required in the URL.'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = AyahTranslationSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -852,103 +777,6 @@ class TranslationViewSet(viewsets.ModelViewSet):
 
         output_serializer = AyahTranslationSerializer(ayah_translation)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-
-    # --- END NEW ACTION ---
-
-@extend_schema_view(
-    list=extend_schema(
-        summary="List all Ayah Translations",
-        parameters=[
-            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='surah_uuid', description='Surah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-        ]
-    ),
-    retrieve=extend_schema(summary="Retrieve a specific Ayah Translation by UUID"),
-    create=extend_schema(
-        summary="Create a new Ayah Translation record",
-        parameters=[
-            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-        ]
-    ),
-    update=extend_schema(
-        summary="Update an existing Ayah Translation record",
-        parameters=[
-            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-        ]
-    ),
-    partial_update=extend_schema(
-        summary="Partially update an Ayah Translation record",
-        parameters=[
-            OpenApiParameter(name='translation_uuid', description='Translation UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='ayah_uuid', description='Ayah UUID', required=False, type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY),
-        ]
-    ),
-    destroy=extend_schema(summary="Delete an Ayah Translation record")
-)
-class AyahTranslationViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for AyahTranslation objects (translations of individual Ayahs).
-    Allows filtering by translation or ayah, and supports upsert on create.
-    """
-    queryset = AyahTranslation.objects.all()
-    serializer_class = AyahTranslationSerializer
-    permission_classes = [
-        core_permissions.IsCreatorOrReadOnly,
-        core_permissions.IsCreatorOfParentOrReadOnly,
-        permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions
-    ]
-    def get_parent_for_permission(self, request):
-        """
-        For create requests, return the Translation object to check ownership.
-        This is used by IsCreatorOrReadOnly permission.
-        """
-        translation_uuid = request.data.get('translation_uuid', None)
-        if translation_uuid:
-            return Translation.objects.filter(uuid=translation_uuid).first()
-        return None
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["text"]
-    ordering_fields = ['created_at']
-    pagination_class = CustomPageNumberPagination
-    lookup_field = "uuid"
-    
-    def get_queryset(self):
-        ayah_translation_fields = [
-            'uuid', 'translation', 'ayah', 'text', 'bismillah', 'creator'
-        ]
-        queryset = AyahTranslation.objects.select_related('translation', 'ayah').only(*ayah_translation_fields)
-        translation_uuid = self.request.query_params.get('translation_uuid', None)
-        ayah_uuid = self.request.query_params.get('ayah_uuid', None)
-        surah_uuid = self.request.query_params.get('surah_uuid', None)
-        if translation_uuid:
-            queryset = queryset.filter(translation__uuid=translation_uuid)
-        if ayah_uuid:
-            queryset = queryset.filter(ayah__uuid=ayah_uuid)
-        if surah_uuid:
-            queryset = queryset.filter(ayah__surah__uuid=surah_uuid)
-        return queryset
-
-    
-    def create(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        translation_uuid = self.request.query_params.get('translation_uuid')
-        ayah_uuid = self.request.query_params.get('ayah_uuid')
-        AyahTranslation.objects.update_or_create(
-            ayah__uuid=ayah_uuid, 
-            translation__uuid=translation_uuid,
-            creator_id=self.request.user.id, 
-            defaults={
-                'text': serializer.validated_data['text'],
-            }
-        )
-        return Response(status=status.HTTP_201_CREATED)
-
-    def perform_create(self, serializer):
-        serializer.save(creator=self.request.user)
 
 @extend_schema_view(
     list=extend_schema(
@@ -1048,7 +876,6 @@ class RecitationViewSet(viewsets.ModelViewSet):
         description=(
             "Accepts a multipart/form-data request with the following parts:\n"
             "• file: The MP3 audio file for the surah.\n"
-            "• surah_uuid: UUID of the surah this file represents.\n"
             "• word_timestamps (optional): JSON string array of objects with start, end, word_uuid."
         ),
         request={
@@ -1056,32 +883,26 @@ class RecitationViewSet(viewsets.ModelViewSet):
                 "type": "object",
                 "properties": {
                     "file": {"type": "string", "format": "binary"},
-                    "surah_uuid": {"type": "string"},
                     "word_timestamps": {"type": "string", "description": "JSON list, optional"},
                 },
-                "required": ["file", "surah_uuid"],
+                "required": ["file"],
             }
         },
         responses={201: OpenApiTypes.OBJECT},
         methods=["POST"],
     )
-    @action(detail=False, methods=["post"], url_path=r"upload/(?P<recitation_uuid>[^/.]+)", parser_classes=[MultiPartParser, FormParser])
+    @action(detail=True, methods=["post"], url_path="upload/(?P<surah_uuid>[^/.]+)", parser_classes=[MultiPartParser, FormParser])
     def upload(self, request, *args, **kwargs):
         """Attach a surah-level audio file (and optional timestamps) to an existing Recitation."""
         import uuid as _uuid
         from django.db import transaction
-        recitation_uuid = kwargs.get("recitation_uuid")
-        if not recitation_uuid:
-            return Response({"detail": "recitation_uuid path parameter missing."}, status=status.HTTP_400_BAD_REQUEST)
-
-        from django.shortcuts import get_object_or_404
-        recitation: Recitation = get_object_or_404(Recitation, uuid=recitation_uuid)
+        recitation: Recitation = self.get_object()
 
         # Check permissions against this object manually since we're in a detail=False action
         self.check_object_permissions(request, recitation)
 
         file_obj = request.FILES.get("file")
-        surah_uuid = request.data.get("surah_uuid")
+        surah_uuid = kwargs.get("surah_uuid")
         word_ts_raw = request.data.get("word_timestamps")
 
         if not file_obj:
@@ -1109,53 +930,12 @@ class RecitationViewSet(viewsets.ModelViewSet):
             except ValueError:
                 return Response({"word_timestamps": "Invalid JSON – expected list."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Upload file to S3 and create file record (same as FileUploadView)
-        import hashlib
-        import os
-        from core.models import File as CoreFile
-        from core.views import Storage
-        
-        # Calculate file hash
-        def calculate_file_hash(file_obj):
-            sha256_hash = hashlib.sha256()
-            for chunk in file_obj.chunks():
-                sha256_hash.update(chunk)
-            return sha256_hash.hexdigest()
-
-        file_hash = calculate_file_hash(file_obj)
-        file_obj.seek(0)  # Reset file pointer
-
-        # Check for duplicate file
-        existing_file = CoreFile.objects.filter(file_hash=file_hash).first()
-        if existing_file:
-            new_file = existing_file
-        else:
-            # Get file extension and validate
-            original_filename = file_obj.name
-            _, ext = os.path.splitext(original_filename)
-            ext = ext[1:].lower()
-            
-            if ext != 'mp3':
-                return Response({"error": "Invalid file type. Expected mp3"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Generate UUID for the file
-            file_uuid = str(_uuid.uuid4())
-            new_filename = f"{file_uuid}.{ext}"
-
-            # Save file to S3 with public access in recitations folder
-            storage = Storage()
-            storage.location = "recitations"  # Set the folder for recitations
-            storage.save(new_filename, file_obj)
-
-            # Create file record in database
-            new_file = CoreFile.objects.create(
-                format=ext,
-                size=file_obj.size,
-                s3_uuid=file_uuid,
-                upload_name=original_filename,
-                file_hash=file_hash,
-                uploader=request.user,
-            )
+        # Upload file to S3 and create file record
+        from core.utils import upload_mp3_to_s3
+        try:
+            new_file = upload_mp3_to_s3(file_obj, request.user, folder="recitations")
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
 

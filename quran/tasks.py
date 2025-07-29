@@ -6,15 +6,12 @@ from quran.models import (
     Word,
     Translation,
     AyahTranslation,
-    RecitationSurah,
-    RecitationSurahTimestamp,
 )
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.conf import settings
 import requests
 
-import json
 from core.models import Notification
 
 @shared_task
@@ -148,8 +145,6 @@ def generate_recitation_surah_timestamps_task(recitation, surah, file_obj):
     
     # Construct the audio URL using s3_uuid
     audio_url = file_obj.get_absolute_url()
-    print(f"File obnj: {file_obj}")
-    print(f"Audio URL: {audio_url}")
 
     # Get all words in the surah, ordered by ayah number and id (creation order)
     words = list(Word.objects.filter(ayah__surah=surah).order_by('ayah__number', 'id'))

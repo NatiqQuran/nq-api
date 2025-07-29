@@ -35,6 +35,4 @@ urlpatterns = [
     path('auth/register/', account_views.AuthViewSet.register, name='knox_register'),
     path('auth/logout/', knox_views.LogoutView.as_view(), name='knox_logout'),
     path('auth/logoutall/', knox_views.LogoutAllView.as_view(), name='knox_logoutall'),
-    path('upload/', core_views.FileUploadView.as_view()),
-    path('upload/subjects/', core_views.UploadSubjectsView.as_view()),
 ] + debug_toolbar_urls()
