@@ -562,3 +562,23 @@ class RecitationSurahSerializer(serializers.ModelSerializer):
 
     def get_surah_uuid(self, obj):
         return str(obj.surah.uuid) if obj.surah else None
+
+# Recitation list serializer (no recitation_surahs)
+class RecitationListSerializer(serializers.ModelSerializer):
+    reciter_account_uuid = serializers.UUIDField(source="reciter_account.uuid", read_only=True)
+    mushaf_uuid = serializers.UUIDField(source="mushaf.uuid", read_only=True)
+
+    class Meta:
+        model = Recitation
+        fields = [
+            "uuid",
+            "status",
+            "recitation_date",
+            "recitation_location",
+            "duration",
+            "recitation_type",
+            "created_at",
+            "updated_at",
+            "reciter_account_uuid",
+            "mushaf_uuid",
+        ]

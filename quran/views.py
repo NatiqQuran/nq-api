@@ -880,6 +880,12 @@ class RecitationViewSet(viewsets.ModelViewSet):
     """
     queryset = Recitation.objects.all()
     serializer_class = RecitationSerializer
+    def get_serializer_class(self):
+        # Use a different serializer for list action to match the actual response schema
+        if self.action == 'list':
+            from .serializers import RecitationListSerializer
+            return RecitationListSerializer
+        return RecitationSerializer
     permission_classes = [
         core_permissions.IsCreatorOrReadOnly,
         permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions,
