@@ -738,11 +738,11 @@ class TranslationViewSet(viewsets.ModelViewSet):
         methods=["PUT", "POST"],
         responses={201: AyahTranslationSerializer, 200: AyahTranslationSerializer}
     )
-    @action(detail=True, methods=["put", "post"], url_path="ayah/(?P<ayah_uuid>[^/.]+)")
+    @action(detail=True, methods=["put", "post"], url_path="ayahs/(?P<ayah_uuid>[^/.]+)")
     def modify_ayah_translation(self, request, *args, **kwargs):
         """
         Upsert endpoint at
-            /translations/{translation_uuid}/ayah/{ayah_uuid}/
+            /translations/{translation_uuid}/ayahs/{ayah_uuid}/
 
         * `translation_uuid` – taken from the main URL (handled by viewset)
         * `ayah_uuid` – path parameter captured by the regex in `url_path`
