@@ -67,7 +67,7 @@ class MushafViewSet(viewsets.ModelViewSet):
     }
     lookup_field = "uuid"
 
-    # --- NEW ACTION: Ayah map for a Mushaf ---
+    # TODO: This will be removed and takhtits router will be added in next update
     @extend_schema(
         summary="Map of all ayahs for the specified Mushaf",
         description=(
@@ -127,9 +127,6 @@ class MushafViewSet(viewsets.ModelViewSet):
 
         return Response(data)
 
-    # --- END NEW ACTION ---
-
-    # --- NEW ACTION: Import ayah breakers (e.g., pages) for a Mushaf ---
     @extend_schema(
         summary="Import Ayah Breakers for the specified Mushaf",
         description=(
@@ -248,8 +245,6 @@ class MushafViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED,
         )
-
-    # --- END NEW ACTION ---
 
     def get_queryset(self):
         # Optimize: Only fetch fields needed for the list action
@@ -550,11 +545,11 @@ class WordViewSet(viewsets.ModelViewSet):
         summary="List all Quran Translations",
         parameters=[
             OpenApiParameter(
-                name="mushaf_uuid",
-                type=OpenApiTypes.UUID,
+                name="mushaf",
+                type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
                 required=True,
-                description="UUID of the Mushaf to filter Translations by."
+                description="Short name of the Mushaf to filter Translations by."
             ),
             OpenApiParameter(
                 name="language",
@@ -610,11 +605,11 @@ class TranslationViewSet(viewsets.ModelViewSet):
             'uuid', 'mushaf', 'translator', 'language', 'release_date', 'source', 'status', 'creator'
         ]
         queryset = Translation.objects.select_related('mushaf', 'translator').only(*translation_fields)
-        mushaf_uuid = self.request.query_params.get('mushaf_uuid')
-        if self.action == 'list' and not mushaf_uuid:
-            raise serializers.ValidationError({'mushaf_uuid': 'This query parameter is required.'})
-        if mushaf_uuid:
-            queryset = queryset.filter(mushaf__uuid=mushaf_uuid)
+        mushaf_short_name = self.request.query_params.get('mushaf')
+        if self.action == 'list' and not mushaf_short_name:
+            raise serializers.ValidationError({'mushaf': 'This query parameter is required.'})
+        if mushaf_short_name:
+            queryset = queryset.filter(mushaf__short_name=mushaf_short_name)
         language = self.request.query_params.get('language', None)
         if language is not None:
             queryset = queryset.filter(language=language)
@@ -719,6 +714,80 @@ class TranslationViewSet(viewsets.ModelViewSet):
         return Response(data)
 
     @extend_schema(
+        summary="List all AyahTranslations for this Translation",
+        description=(
+            "Returns a paginated list of all AyahTranslation objects for the given Translation UUID. "
+            "Optionally filter by surah_uuid (query param)."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="surah_uuid",
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="UUID of the Surah to filter AyahTranslations by."
+            )
+        ],
+        responses={200: AyahTranslationSerializer(many=True)}
+    )
+    @action(detail=True, methods=["get"], url_path="ayahs")
+    def ayahs(self, request, *args, **kwargs):
+        """
+        List all AyahTranslation objects for this Translation.
+        Optional query param: surah_uuid to filter by Surah.
+        For the returned list, only the first ayah should have its 'bismillah' value from DB; the rest should be null.
+        """
+        translation = self.get_object()
+        ayah_translations = translation.ayah_translations.select_related('ayah', 'ayah__surah').order_by('ayah__number')
+        surah_uuid = request.query_params.get('surah_uuid')
+        if surah_uuid:
+            ayah_translations = ayah_translations.filter(ayah__surah__uuid=surah_uuid)
+        paginator = CustomPageNumberPagination()
+        page = paginator.paginate_queryset(ayah_translations, request)
+        from .serializers import AyahTranslationNestedSerializer
+        def process_bismillah(data):
+            # Only the first ayah keeps its bismillah, the rest are set to None
+            found_first = False
+            for item in data:
+                if not found_first:
+                    found_first = True
+                else:
+                    item['bismillah'] = None
+            return data
+        if page is not None:
+            serializer = AyahTranslationNestedSerializer(page, many=True)
+            processed = process_bismillah(serializer.data)
+            return paginator.get_paginated_response(processed)
+        serializer = AyahTranslationNestedSerializer(ayah_translations, many=True)
+        processed = process_bismillah(serializer.data)
+        return Response(processed)
+
+    @extend_schema(
+        summary="Retrieve a single AyahTranslation for this Translation",
+        description=(
+            "Returns a single AyahTranslation object for the given Translation UUID and Ayah UUID. "
+            "URL: /translations/{translation_uuid}/ayahs/{ayah_uuid}/"
+        ),
+        methods=["GET"],
+        responses={200: AyahTranslationSerializer}
+    )
+    @action(detail=True, methods=["get"], url_path="ayahs/(?P<ayah_uuid>[^/.]+)")
+    def get_ayah_translation(self, request, *args, **kwargs):
+        """
+        Retrieve a single AyahTranslation for this Translation and Ayah.
+        URL: /translations/{translation_uuid}/ayahs/{ayah_uuid}/
+        """
+        from .serializers import AyahTranslationSerializer
+        translation: Translation = self.get_object()
+        ayah_uuid = kwargs.get("ayah_uuid")
+        try:
+            ayah_translation = translation.ayah_translations.select_related('ayah', 'ayah__surah').get(ayah__uuid=ayah_uuid)
+        except AyahTranslation.DoesNotExist:
+            return Response({'detail': 'AyahTranslation not found for this translation and ayah.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AyahTranslationSerializer(ayah_translation)
+        return Response(serializer.data)
+
+    @extend_schema(
         summary="Create or update (upsert) a specific AyahTranslation",
         description=(
             "Provide the ayah's UUID in the URL path and the translation's UUID as the primary resource path. "
@@ -738,11 +807,11 @@ class TranslationViewSet(viewsets.ModelViewSet):
         methods=["PUT", "POST"],
         responses={201: AyahTranslationSerializer, 200: AyahTranslationSerializer}
     )
-    @action(detail=True, methods=["put", "post"], url_path="ayah/(?P<ayah_uuid>[^/.]+)")
+    @action(detail=True, methods=["put", "post"], url_path="ayahs/(?P<ayah_uuid>[^/.]+)")
     def modify_ayah_translation(self, request, *args, **kwargs):
         """
         Upsert endpoint at
-            /translations/{translation_uuid}/ayah/{ayah_uuid}/
+            /translations/{translation_uuid}/ayahs/{ayah_uuid}/
 
         * `translation_uuid` – taken from the main URL (handled by viewset)
         * `ayah_uuid` – path parameter captured by the regex in `url_path`
@@ -783,11 +852,11 @@ class TranslationViewSet(viewsets.ModelViewSet):
         summary="List all Recitations (audio recordings)",
         parameters=[
             OpenApiParameter(
-                name="mushaf_uuid",
-                type=OpenApiTypes.UUID,
+                name="mushaf",
+                type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
                 required=True,
-                description="UUID of the Mushaf to filter Recitations by."
+                description="Short name of the Mushaf to filter Recitations by."
             ),
             OpenApiParameter(
                 name="reciter_uuid",
@@ -811,6 +880,12 @@ class RecitationViewSet(viewsets.ModelViewSet):
     """
     queryset = Recitation.objects.all()
     serializer_class = RecitationSerializer
+    def get_serializer_class(self):
+        # Use a different serializer for list action to match the actual response schema
+        if self.action == 'list':
+            from .serializers import RecitationListSerializer
+            return RecitationListSerializer
+        return RecitationSerializer
     permission_classes = [
         core_permissions.IsCreatorOrReadOnly,
         permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions,
@@ -831,11 +906,11 @@ class RecitationViewSet(viewsets.ModelViewSet):
         ]
         queryset = Recitation.objects.select_related('mushaf', 'reciter_account').only(*recitation_fields)
         # Filter by mushaf if provided
-        mushaf_uuid = self.request.query_params.get('mushaf_uuid')
-        if self.action == 'list' and not mushaf_uuid:
-            raise serializers.ValidationError({'mushaf_uuid': 'This query parameter is required.'})
-        if mushaf_uuid:
-            queryset = queryset.filter(mushaf__uuid=mushaf_uuid)
+        mushaf_short_name = self.request.query_params.get('mushaf')
+        if self.action == 'list' and not mushaf_short_name:
+            raise serializers.ValidationError({'mushaf': 'This query parameter is required.'})
+        if mushaf_short_name:
+            queryset = queryset.filter(mushaf__short_name=mushaf_short_name)
         # Filter by reciter if provided
         reciter_uuid = self.request.query_params.get('reciter_uuid', None)
         if reciter_uuid is not None:
