@@ -67,7 +67,7 @@ class MushafViewSet(viewsets.ModelViewSet):
     }
     lookup_field = "uuid"
 
-    # --- NEW ACTION: Ayah map for a Mushaf ---
+    # TODO: This will be removed and takhtits router will be added in next update
     @extend_schema(
         summary="Map of all ayahs for the specified Mushaf",
         description=(
@@ -761,6 +761,32 @@ class TranslationViewSet(viewsets.ModelViewSet):
         serializer = AyahTranslationNestedSerializer(ayah_translations, many=True)
         processed = process_bismillah(serializer.data)
         return Response(processed)
+
+    @extend_schema(
+        summary="Retrieve a single AyahTranslation for this Translation",
+        description=(
+            "Returns a single AyahTranslation object for the given Translation UUID and Ayah UUID. "
+            "URL: /translations/{translation_uuid}/ayahs/{ayah_uuid}/"
+        ),
+        methods=["GET"],
+        responses={200: AyahTranslationSerializer}
+    )
+    @action(detail=True, methods=["get"], url_path="ayahs/(?P<ayah_uuid>[^/.]+)")
+    def get_ayah_translation(self, request, *args, **kwargs):
+        """
+        Retrieve a single AyahTranslation for this Translation and Ayah.
+        URL: /translations/{translation_uuid}/ayahs/{ayah_uuid}/
+        """
+        from .serializers import AyahTranslationSerializer
+        translation: Translation = self.get_object()
+        ayah_uuid = kwargs.get("ayah_uuid")
+        try:
+            ayah_translation = translation.ayah_translations.select_related('ayah', 'ayah__surah').get(ayah__uuid=ayah_uuid)
+        except AyahTranslation.DoesNotExist:
+            return Response({'detail': 'AyahTranslation not found for this translation and ayah.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AyahTranslationSerializer(ayah_translation)
+        return Response(serializer.data)
+
     @extend_schema(
         summary="Create or update (upsert) a specific AyahTranslation",
         description=(
