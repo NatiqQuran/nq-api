@@ -115,17 +115,25 @@ class AyahTranslation(models.Model):
     def __str__(self):
         return f"{self.translation.language} - {self.ayah}"
 
+class AyahBreakerType(models.TextChoices):
+    PAGE = "page", "Page"
+    JUZ = "juz", "Juz"
+    HIZB = "hizb", "Hizb"
+    RUB = "rub", "Rub"
+    MANZIL = "manzil", "Manzil"
+    RUKU = "ruku", "Ruku"
+
 class AyahBreaker(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='ayah_breakers')
     ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='breakers')
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='owned_ayah_breakers', null=True, blank=True)
-    name = models.CharField(max_length=256)
+    type = models.CharField(max_length=20, choices=AyahBreakerType.choices)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} - {self.ayah}"
+        return f"{self.type} - {self.ayah}"
 
 class WordBreaker(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
