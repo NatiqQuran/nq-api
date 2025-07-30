@@ -127,9 +127,6 @@ class MushafViewSet(viewsets.ModelViewSet):
 
         return Response(data)
 
-    # --- END NEW ACTION ---
-
-    # --- NEW ACTION: Import ayah breakers (e.g., pages) for a Mushaf ---
     @extend_schema(
         summary="Import Ayah Breakers for the specified Mushaf",
         description=(
@@ -248,8 +245,6 @@ class MushafViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED,
         )
-
-    # --- END NEW ACTION ---
 
     def get_queryset(self):
         # Optimize: Only fetch fields needed for the list action

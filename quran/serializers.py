@@ -466,7 +466,6 @@ class RecitationSerializer(serializers.ModelSerializer):
         representation['reciter_account_uuid'] = str(instance.reciter_account.uuid) if getattr(instance, 'reciter_account', None) else None
         # Always show UUIDs using the read-only methods
         representation['mushaf_uuid'] = representation.pop('get_mushaf_uuid', None)
-        # representation['surah_uuid'] = representation.pop('get_surah_uuid', None) # This line is removed
         # Remove reciter_account (int id) from output if present
         representation.pop('reciter_account', None)
 
@@ -481,6 +480,11 @@ class RecitationSerializer(serializers.ModelSerializer):
         if action == 'list':
             representation.pop('words_timestamps', None)
             representation.pop('ayahs_timestamps', None)
+
+        # Add recitation_surahs with file_url for each
+        from quran.models import RecitationSurah
+        recitation_surahs = RecitationSurah.objects.filter(recitation=instance)
+        representation['recitation_surahs'] = RecitationSurahSerializer(recitation_surahs, many=True, context=self.context).data
 
         return representation
 
@@ -542,3 +546,19 @@ class TranslationListSerializer(serializers.ModelSerializer):
 
     def get_translator_uuid(self, obj):
         return str(obj.translator.uuid) if obj.translator else None
+
+class RecitationSurahSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+    surah_uuid = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RecitationSurah
+        fields = ['surah_uuid', 'file_url']
+
+    def get_file_url(self, obj):
+        if obj.file and hasattr(obj.file, 'get_absolute_url'):
+            return obj.file.get_absolute_url()
+        return None
+
+    def get_surah_uuid(self, obj):
+        return str(obj.surah.uuid) if obj.surah else None
