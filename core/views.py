@@ -1,22 +1,16 @@
-from rest_framework.parsers import MultiPartParser
 from django.http import HttpResponse
-from rest_framework import viewsets, permissions, views
-from .models import ErrorLog, Phrase, PhraseTranslation, File, Notification
+from rest_framework import viewsets, permissions
+from .models import ErrorLog, Phrase, PhraseTranslation, Notification
 from .serializers import (ErrorLogSerializer, PhraseModifySerializer,
                           PhraseSerializer,
                           PhraseTranslationSerializer,
                           NotificationSerializer)
 from rest_framework.decorators import action
 from storages.backends.s3boto3 import S3Boto3Storage
-import uuid
 from rest_framework.response import Response
-import os
-import magic
-import hashlib
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view, OpenApiExample, inline_serializer
 from drf_spectacular.types import OpenApiTypes
-from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 from core.pagination import CustomPageNumberPagination
 

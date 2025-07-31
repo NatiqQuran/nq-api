@@ -7,6 +7,7 @@ from quran.models import (
     Mushaf,
     Surah,
     Ayah,
+    Takhtit,
     Word,
     Translation,
     AyahTranslation,
@@ -322,7 +323,7 @@ class AyahTranslationSerializer(serializers.ModelSerializer):
 class AyahBreakerSerializer(serializers.ModelSerializer):
     class Meta:
         model = AyahBreaker
-        fields = ['uuid', 'ayah_id', 'owner_id', 'name']
+        fields = ['uuid', 'type']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
@@ -332,7 +333,7 @@ class AyahBreakerSerializer(serializers.ModelSerializer):
 class WordBreakerSerializer(serializers.ModelSerializer):
     class Meta:
         model = WordBreaker
-        fields = ['uuid', 'word_id', 'owner_id', 'name']
+        fields = ['uuid', 'name']
         read_only_fields = ['creator']
 
     def create(self, validated_data):
@@ -582,3 +583,17 @@ class RecitationListSerializer(serializers.ModelSerializer):
             "reciter_account_uuid",
             "mushaf_uuid",
         ]
+
+class TakhtitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Takhtit
+        # TODO return relations as uuid
+        fields = [
+            'uuid',
+            'creator',
+            'mushaf',
+            'account',
+            'created_at',
+        ]
+        read_only_fields = ['uuid', 'creator', 'created_at', 'updated_at']
+ 

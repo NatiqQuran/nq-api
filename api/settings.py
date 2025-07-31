@@ -222,16 +222,16 @@ SPECTACULAR_SETTINGS = {
             'description': 'Manage audio recitations of the Quran',
         },
         {
+            'name': 'takhtits',
+            'description': 'Manage takhtits (textual annotations) for Quranic verses',
+        },
+        {
             'name': 'phrases',
             'description': 'Create and maintain phrases for the application',
         },
         {
             'name': 'notifications',
             'description': 'Endpoints related to user notifications',
-        },
-        {
-            'name': 'upload',
-            'description': 'Generic file-upload endpoints (JSON imports, subject uploads, etc.)',
         },
     ],
     # OTHER SETTINGS

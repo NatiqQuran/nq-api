@@ -123,11 +123,23 @@ class AyahBreakerType(models.TextChoices):
     MANZIL = "manzil", "Manzil"
     RUKU = "ruku", "Ruku"
 
+class Takhtit(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='takhtits')
+    mushaf = models.ForeignKey(Mushaf, on_delete=models.CASCADE, related_name='takhtits')
+    account = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='takhtit_accounts')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return str(self.account)
+
 class AyahBreaker(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='ayah_breakers')
     ayah = models.ForeignKey(Ayah, on_delete=models.CASCADE, related_name='breakers')
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='owned_ayah_breakers', null=True, blank=True)
+    takhtit = models.ForeignKey(Takhtit, on_delete=models.CASCADE, related_name='ayah_breakers', null=True, blank=True)
     type = models.CharField(max_length=20, choices=AyahBreakerType.choices)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -140,12 +152,16 @@ class WordBreaker(models.Model):
     creator = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='word_breakers')
     word = models.ForeignKey(Word, on_delete=models.CASCADE, related_name='breakers')
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='owned_word_breakers', null=True, blank=True)
-    name = models.CharField(max_length=256)
+    takhtit = models.ForeignKey(Takhtit, on_delete=models.CASCADE, related_name='word_breakers', null=True, blank=True)
+    TYPE_CHOICES = [
+        ('line', 'Line'),
+    ]
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='line')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} - {self.word}"
+        return f"{self.type} - {self.word}"
 
 class Recitation(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -192,4 +208,3 @@ class RecitationSurahTimestamp(models.Model):
 
     def __str__(self):
         return f"Timestamp for {self.recitation_surah} at {self.start_time}"
-
