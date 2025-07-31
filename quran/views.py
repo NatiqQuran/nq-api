@@ -1164,3 +1164,94 @@ class TakhtitViewSet(viewsets.ModelViewSet):
             return Response({"detail": "AyahBreaker not found."}, status=404)
         serializer = AyahBreakerSerializer(breaker)
         return Response(serializer.data)
+    @extend_schema(
+        summary="List all words_breakers for this takhtit (with line counters)",
+        description="Returns a flat list containing an entry for every word with a breaker for this takhtit, with a line counter (incremented for each breaker).",
+        responses={200: OpenApiTypes.OBJECT}
+    )
+    @action(detail=True, methods=["get"], url_path="words_breakers")
+    def words_breakers(self, request, uuid=None):
+        takhtit = self.get_object()
+        from quran.models import WordBreaker, Word
+        # Get all word breakers for this takhtit, ordered by word's ayah and word id
+        word_breakers = (
+            WordBreaker.objects
+            .filter(takhtit=takhtit)
+            .select_related('word', 'word__ayah')
+            .order_by('word__ayah__surah__number', 'word__ayah__number', 'word__id')
+        )
+        line_counter = 0
+        data = []
+        for wb in word_breakers:
+            line_counter += 1
+            data.append({
+                "word_uuid": str(wb.word.uuid),
+                "line": line_counter
+            })
+        return Response(data)
+
+    @extend_schema(
+        summary="Add a words_breaker to this takhtit",
+        description="Add a new words_breaker to this takhtit. Requires word_uuid in the request body. Only type 'line' is allowed.",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "word_uuid": {"type": "string", "format": "uuid", "description": "UUID of the word to link."},
+                    "type": {"type": "string", "description": "Breaker type (must be 'line')."}
+                },
+                "required": ["word_uuid", "type"]
+            }
+        },
+        responses={201: OpenApiTypes.OBJECT}
+    )
+    @words_breakers.mapping.post
+    def add_words_breaker(self, request, uuid=None):
+        takhtit = self.get_object()
+        data = request.data.copy()
+        word_uuid = data.pop('word_uuid', None)
+        breaker_type = data.get('type')
+        if not word_uuid:
+            return Response({"detail": "word_uuid is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not breaker_type:
+            return Response({"detail": "type is required."}, status=status.HTTP_400_BAD_REQUEST)
+        # Only allow 'line' type
+        if breaker_type != 'line':
+            return Response({"detail": "Invalid type. Only 'line' is allowed for WordBreaker."}, status=status.HTTP_400_BAD_REQUEST)
+        from quran.models import Word, WordBreaker
+        try:
+            word = Word.objects.get(uuid=word_uuid)
+        except Word.DoesNotExist:
+            return Response({"detail": "Word not found."}, status=status.HTTP_404_NOT_FOUND)
+        # Create the WordBreaker
+        wb = WordBreaker.objects.create(
+            creator=request.user,
+            word=word,
+            takhtit=takhtit,
+            type='line'
+        )
+        # Return only the word UUID and type
+        return Response({"word_uuid": str(word.uuid), "type": "line"}, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        summary="Retrieve a specific words_breaker for this takhtit",
+        parameters=[
+            OpenApiParameter(
+                name="breaker_uuid",
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.PATH,
+                required=True,
+                description="UUID of the words_breaker."
+            )
+        ],
+        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+    )
+    @action(detail=True, methods=["get"], url_path="words_breakers/(?P<breaker_uuid>[^/.]+)")
+    def retrieve_words_breaker(self, request, uuid=None, breaker_uuid=None):
+        from quran.models import WordBreaker
+        takhtit = self.get_object()
+        breaker = WordBreaker.objects.filter(takhtit=takhtit, uuid=breaker_uuid).first()
+        if not breaker:
+            return Response({"detail": "WordBreaker not found."}, status=404)
+        # Return only the word UUID and type
+        return Response({"word_uuid": str(breaker.word.uuid), "type": breaker.type})
