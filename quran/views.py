@@ -11,8 +11,10 @@ from quran.models import (
     AyahBreaker,
     RecitationSurah,
     RecitationSurahTimestamp,
+    Takhtit,
 )
 from quran.serializers import (
+    AyahBreakerSerializer,
     AyahSerializerView,
     MushafSerializer,
     SurahSerializer,
@@ -24,6 +26,7 @@ from quran.serializers import (
     AyahAddSerializer,
     RecitationSerializer,
     TranslationListSerializer,
+    TakhtitSerializer,
 )
 
 from core import permissions as core_permissions
@@ -66,66 +69,6 @@ class MushafViewSet(viewsets.ModelViewSet):
         "status": ["published"]
     }
     lookup_field = "uuid"
-
-    # TODO: This will be removed and takhtits router will be added in next update
-    @extend_schema(
-        summary="Map of all ayahs for the specified Mushaf",
-        description=(
-            "Returns a flat list containing an entry for **every** ayah that belongs to the selected "
-            "mushaf. The response schema is:\n"
-            "```json\n[\n  {\n    \"uuid\": \"str\",            // Ayah UUID\n    \"surah\": \"int\",           // Surah number\n    \"ayah\": \"int\",            // Ayah number within the surah\n    \"juz\": \"int|null\",        // Juz number (null if unknown)\n    \"hizb\": \"int|null\",       // Hizb quarter number (null if unknown)\n    \"ruku\": \"int|null\",       // Ruku number (null if unknown)\n    \"page\": \"int|null\"        // Page number in the standard Madinah mushaf (null if unknown)\n  },\n  ...\n]\n```"
-        ),
-        methods=["GET"],
-        responses={200: OpenApiTypes.OBJECT},
-    )
-    @action(detail=True, methods=["get"], url_path="map")
-    def ayah_map(self, request, *args, **kwargs):
-        """Return a simplified mapping of every ayah for the specified Mushaf UUID (path param)."""
-        mushaf = self.get_object()
-
-        # Gather all ayahs (ordered) once
-        ayah_qs = (
-            Ayah.objects.filter(surah__mushaf=mushaf)
-            .select_related("surah")
-            .order_by("surah__number", "number", "id")
-        )
-
-        # Fetch Ayah-level breakers only for these ayahs
-        breakers_qs = (
-            AyahBreaker.objects
-            .filter(ayah__in=ayah_qs)
-            .select_related("ayah", "ayah__surah")
-            .order_by("ayah__surah__number", "ayah__number")
-        )
-
-        # Group breakers by ayah_id for O(1) lookup per iteration
-        from collections import defaultdict
-        breakers_by_ayah = defaultdict(list)
-        for br in breakers_qs:
-            breakers_by_ayah[br.ayah_id].append(br.name.lower())
-
-        # Running counters for each breaker type
-        counters = {"juz": 0, "hizb": 0, "ruku": 0, "page": 0}
-
-        data = []
-        for ayah in ayah_qs:
-            # Increment counters for breakers that BEGIN at this ayah
-            for br_name in breakers_by_ayah.get(ayah.id, []):
-                key = br_name.split()[0]  # take first token (e.g. "juz", "hizb")
-                if key in counters:
-                    counters[key] += 1
-
-            data.append({
-                "uuid": str(ayah.uuid),
-                "surah": ayah.surah.number,
-                "ayah": ayah.number,
-                "juz": counters["juz"] or None,
-                "hizb": counters["hizb"] or None,
-                "ruku": counters["ruku"] or None,
-                "page": counters["page"] or None,
-            })
-
-        return Response(data)
 
     @extend_schema(
         summary="Import Ayah Breakers for the specified Mushaf",
@@ -1037,3 +980,187 @@ class RecitationViewSet(viewsets.ModelViewSet):
                 ))
 
         return Response({"detail": "Upload processed successfully."}, status=status.HTTP_201_CREATED)
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all Takhtits (text annotations/notes)",
+        parameters=[
+            OpenApiParameter(
+                name="mushaf",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Short name of the Mushaf to filter Takhtits by."
+            )
+        ],
+        tags=["general", "takhtits"],
+    ),
+    retrieve=extend_schema(summary="Retrieve a specific Takhtit by UUID", tags=["general", "takhtits"]),
+    create=extend_schema(
+        summary="Create a new Takhtit record",
+        description="Create a new Takhtit. Requires mushaf_uuid and account_uuid in the request body.",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "mushaf_uuid": {"type": "string", "format": "uuid", "description": "UUID of the mushaf to link."},
+                    "account_uuid": {"type": "string", "format": "uuid", "description": "UUID of the account to link."}
+                },
+                "required": ["mushaf_uuid", "account_uuid"]
+            }
+        }
+    ),
+    update=extend_schema(summary="Update an existing Takhtit record"),
+    partial_update=extend_schema(summary="Partially update a Takhtit record"),
+    destroy=extend_schema(summary="Delete a Takhtit record")
+)
+class TakhtitViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Takhtit objects.
+    Supports listing, creating, updating, and retrieving Takhtit records.
+    """
+    queryset = Takhtit.objects.all()
+    serializer_class = TakhtitSerializer
+    permission_classes = [
+        core_permissions.IsCreatorOrReadOnly,
+        permissions.IsAuthenticatedOrReadOnly | permissions.DjangoModelPermissions
+    ]
+    filterset_fields = ['mushaf', 'account', 'creator']
+    search_fields = []
+    ordering_fields = ['created_at', 'updated_at']
+    ordering = ['-created_at']
+    lookup_field = 'uuid'
+
+    def perform_create(self, serializer):
+        # Expect mushaf_uuid and account_uuid in the request data
+        mushaf_uuid = self.request.data.get('mushaf_uuid')
+        account_uuid = self.request.data.get('account_uuid')
+        from quran.models import Mushaf
+        from account.models import CustomUser
+        mushaf = None
+        account = None
+        errors = {}
+        if not mushaf_uuid:
+            errors['mushaf_uuid'] = 'This field is required.'
+        else:
+            try:
+                mushaf = Mushaf.objects.get(uuid=mushaf_uuid)
+            except Mushaf.DoesNotExist:
+                errors['mushaf_uuid'] = 'Mushaf not found.'
+        if not account_uuid:
+            errors['account_uuid'] = 'This field is required.'
+        else:
+            try:
+                account = CustomUser.objects.get(uuid=account_uuid)
+            except CustomUser.DoesNotExist:
+                errors['account_uuid'] = 'Account not found.'
+        if errors:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError(errors)
+        serializer.save(creator=self.request.user, mushaf=mushaf, account=account)
+
+    @extend_schema(
+        summary="List all ayahs_breakers for this takhtit (ayahs map style)",
+        description="Returns a flat list containing an entry for every ayah in this takhtit, with breaker info similar to the mushaf ayah_map action.",
+        responses={200: OpenApiTypes.OBJECT}
+    )
+    @action(detail=True, methods=["get"], url_path="ayahs_breakers")
+    def ayahs_breakers(self, request, uuid=None):
+        takhtit = self.get_object()
+        # Get all ayahs for this takhtit (via breakers)
+        ayah_ids = AyahBreaker.objects.filter(takhtit=takhtit).values_list('ayah_id', flat=True)
+        ayah_qs = Ayah.objects.filter(id__in=ayah_ids).select_related("surah").order_by("surah__number", "number", "id")
+        # Fetch Ayah-level breakers only for these ayahs and this takhtit
+        breakers_qs = (
+            AyahBreaker.objects
+            .filter(takhtit=takhtit, ayah__in=ayah_qs)
+            .select_related("ayah", "ayah__surah")
+            .order_by("ayah__surah__number", "ayah__number")
+        )
+        from collections import defaultdict
+        breakers_by_ayah = defaultdict(list)
+        for br in breakers_qs:
+            breakers_by_ayah[br.ayah_id].append(br.type.lower())
+        counters = {k: 0 for k in ["juz", "hizb", "ruku", "page", "rub", "manzil"]}
+        data = []
+        for ayah in ayah_qs:
+            # Increment counters for breakers that BEGIN at this ayah
+            for br_type in breakers_by_ayah.get(ayah.id, []):
+                key = br_type.split()[0]
+                if key in counters:
+                    counters[key] += 1
+            data.append({
+                "uuid": str(ayah.uuid),
+                "surah": ayah.surah.number,
+                "ayah": ayah.number,
+                "juz": counters["juz"] or None,
+                "hizb": counters["hizb"] or None,
+                "ruku": counters["ruku"] or None,
+                "page": counters["page"] or None,
+                "rub": counters["rub"] or None,
+                "manzil": counters["manzil"] or None,
+            })
+        return Response(data)
+
+    @extend_schema(
+        summary="Add an ayahs_breaker to this takhtit",
+        description="Add a new ayahs_breaker to this takhtit. Requires ayah_uuid in the request body.",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "ayah_uuid": {"type": "string", "format": "uuid", "description": "UUID of the ayah to link."},
+                    "type": {"type": "string", "description": "Breaker type (see AyahBreakerType)."}
+                },
+                "required": ["ayah_uuid", "type"]
+            }
+        },
+        responses={201: AyahBreakerSerializer}
+    )
+    @ayahs_breakers.mapping.post
+    def add_ayahs_breaker(self, request, uuid=None):
+        takhtit = self.get_object()
+        data = request.data.copy()
+        ayah_uuid = data.pop('ayah_uuid', None)
+        breaker_type = data.get('type')
+        if not ayah_uuid:
+            return Response({"detail": "ayah_uuid is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not breaker_type:
+            return Response({"detail": "type is required."}, status=status.HTTP_400_BAD_REQUEST)
+        # Validate breaker type
+        from quran.models import Ayah, AyahBreakerType
+        valid_types = [choice[0] for choice in AyahBreakerType.choices]
+        if breaker_type not in valid_types:
+            return Response({"detail": f"Invalid type. Must be one of: {', '.join(valid_types)}."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            ayah = Ayah.objects.get(uuid=ayah_uuid)
+        except Ayah.DoesNotExist:
+            return Response({"detail": "Ayah not found."}, status=status.HTTP_404_NOT_FOUND)
+        data['takhtit'] = takhtit.pk
+        data['ayah'] = ayah.pk
+        serializer = AyahBreakerSerializer(data=data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        summary="Retrieve a specific ayahs_breaker for this takhtit",
+        parameters=[
+            OpenApiParameter(
+                name="breaker_uuid",
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.PATH,
+                required=True,
+                description="UUID of the ayahs_breaker."
+            )
+        ],
+        responses={200: AyahBreakerSerializer, 404: OpenApiTypes.OBJECT}
+    )
+    @action(detail=True, methods=["get"], url_path="ayahs_breakers/(?P<breaker_uuid>[^/.]+)")
+    def retrieve_ayahs_breaker(self, request, uuid=None, breaker_uuid=None):
+        takhtit = self.get_object()
+        breaker = AyahBreaker.objects.filter(takhtit=takhtit, uuid=breaker_uuid).first()
+        if not breaker:
+            return Response({"detail": "AyahBreaker not found."}, status=404)
+        serializer = AyahBreakerSerializer(breaker)
+        return Response(serializer.data)

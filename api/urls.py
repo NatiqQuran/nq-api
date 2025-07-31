@@ -22,6 +22,7 @@ router.register(r'profile', account_views.ProfileViewSet, basename="profile")
 router.register(r'phrases', core_views.PhraseViewSet)
 router.register(r'recitations', quran_views.RecitationViewSet)
 router.register(r'notifications', core_views.NotificationViewSet, basename='notification')
+router.register(r'takhtits', quran_views.TakhtitViewSet)
 
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
