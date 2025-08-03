@@ -1,15 +1,19 @@
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
-class CustomPageNumberPagination(PageNumberPagination):
-    page_size = 20  # Default page size
-    page_size_query_param = 'page_size'
-    max_page_size = 1000
+
+class CustomLimitOffsetPagination(LimitOffsetPagination):
+    """
+    Custom pagination using Django REST Framework's LimitOffsetPagination.
+    Uses 'limit' and 'offset' parameters for pagination.
+    """
+    default_limit = 20
+    limit_query_param = 'limit'
+    offset_query_param = 'offset'
+    max_limit = 1000
 
     def get_paginated_response(self, data):
+        """
+        Return only the data without pagination metadata.
+        """
         return Response(data)
-
-    @staticmethod
-    def get_paginated_response_schema(schema):
-        # Return the schema as-is, since the response is just the data list
-        return schema

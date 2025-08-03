@@ -12,7 +12,7 @@ from django.conf import settings
 from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view, OpenApiExample, inline_serializer
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
-from core.pagination import CustomPageNumberPagination
+from core.pagination import CustomLimitOffsetPagination
 
 
 @extend_schema_view(
@@ -123,7 +123,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
     permission_classes = [DjangoModelPermissions]
-    pagination_class = CustomPageNumberPagination
+    pagination_class = CustomLimitOffsetPagination
 
     def get_permissions(self):
         if self.action == 'me':
@@ -138,7 +138,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def me(self, request):
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
-        paginator = CustomPageNumberPagination()
+        paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(notifications, request)
         # Update status to 'got_notification' only for notifications in the current page
         to_update = []
