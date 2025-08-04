@@ -233,6 +233,10 @@ SPECTACULAR_SETTINGS = {
             'name': 'notifications',
             'description': 'Endpoints related to user notifications',
         },
+        {
+            'name': 'health',
+            'description': 'Health check endpoints for monitoring system status',
+        },
     ],
     # OTHER SETTINGS
 }

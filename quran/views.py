@@ -33,7 +33,7 @@ from core import permissions as core_permissions
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from django_filters.rest_framework import DjangoFilterBackend
-from core.pagination import CustomPageNumberPagination
+from core.pagination import CustomLimitOffsetPagination
 from rest_framework.decorators import action
 import json
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -64,7 +64,7 @@ class MushafViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["short_name", "name", "source"]
     ordering_fields = ['created_at']
-    pagination_class = CustomPageNumberPagination  # Fixed typo
+    pagination_class = CustomLimitOffsetPagination  # Fixed typo
     limited_fields = {
         "status": ["published"]
     }
@@ -288,7 +288,7 @@ class SurahViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]
     ordering_fields = ['created_at']
-    pagination_class = CustomPageNumberPagination
+    pagination_class = CustomLimitOffsetPagination
     lookup_field = "uuid"
 
     def get_parent_for_permission(self, request):
@@ -365,7 +365,7 @@ class AyahViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["number", "text"]
     ordering_fields = ['created_at']
-    pagination_class = CustomPageNumberPagination
+    pagination_class = CustomLimitOffsetPagination
     lookup_field = "uuid"
 
     def get_queryset(self):
@@ -455,7 +455,7 @@ class WordViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["text"]
     ordering_fields = ['created_at']
-    pagination_class = CustomPageNumberPagination
+    pagination_class = CustomLimitOffsetPagination
     lookup_field = "uuid"
     
     def get_queryset(self):
@@ -528,7 +528,7 @@ class TranslationViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["text"]
     ordering_fields = ['created_at']
-    pagination_class = CustomPageNumberPagination
+    pagination_class = CustomLimitOffsetPagination
     limited_fields = {
         "status": ["published"]
     }
@@ -656,7 +656,7 @@ class TranslationViewSet(viewsets.ModelViewSet):
         surah_uuid = request.query_params.get('surah_uuid')
         if surah_uuid:
             ayah_translations = ayah_translations.filter(ayah__surah__uuid=surah_uuid)
-        paginator = CustomPageNumberPagination()
+        paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(ayah_translations, request)
         from .serializers import AyahTranslationNestedSerializer
         def process_bismillah(data):
@@ -808,7 +808,7 @@ class RecitationViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["recitation_date", "recitation_location", "recitation_type"]
     ordering_fields = ['created_at', 'duration', 'recitation_date']
-    pagination_class = CustomPageNumberPagination
+    pagination_class = CustomLimitOffsetPagination
     limited_fields = {
         "status": ["published"]
     }
