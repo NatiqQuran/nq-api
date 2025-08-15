@@ -27,6 +27,9 @@ from quran.serializers import (
     RecitationSerializer,
     TranslationListSerializer,
     TakhtitSerializer,
+    AyahBreakersResponseSerializer,
+    WordBreakersResponseSerializer,
+    WordBreakerDetailResponseSerializer,
 )
 
 from core import permissions as core_permissions
@@ -1062,7 +1065,7 @@ class TakhtitViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="List all ayahs_breakers for this takhtit (ayahs map style)",
         description="Returns a flat list containing an entry for every ayah in this takhtit, with breaker info similar to the mushaf ayah_map action.",
-        responses={200: OpenApiTypes.OBJECT}
+        responses={200: AyahBreakersResponseSerializer(many=True)}
     )
     @action(detail=True, methods=["get"], url_path="ayahs_breakers")
     def ayahs_breakers(self, request, uuid=None):
@@ -1167,7 +1170,7 @@ class TakhtitViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="List all words_breakers for this takhtit (with line counters)",
         description="Returns a flat list containing an entry for every word with a breaker for this takhtit, with a line counter (incremented for each breaker).",
-        responses={200: OpenApiTypes.OBJECT}
+        responses={200: WordBreakersResponseSerializer(many=True)}
     )
     @action(detail=True, methods=["get"], url_path="words_breakers")
     def words_breakers(self, request, uuid=None):
@@ -1203,7 +1206,7 @@ class TakhtitViewSet(viewsets.ModelViewSet):
                 "required": ["word_uuid", "type"]
             }
         },
-        responses={201: OpenApiTypes.OBJECT}
+        responses={201: WordBreakerDetailResponseSerializer}
     )
     @words_breakers.mapping.post
     def add_words_breaker(self, request, uuid=None):
@@ -1244,7 +1247,7 @@ class TakhtitViewSet(viewsets.ModelViewSet):
                 description="UUID of the words_breaker."
             )
         ],
-        responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}
+        responses={200: WordBreakerDetailResponseSerializer, 404: OpenApiTypes.OBJECT}
     )
     @action(detail=True, methods=["get"], url_path="words_breakers/(?P<breaker_uuid>[^/.]+)")
     def retrieve_words_breaker(self, request, uuid=None, breaker_uuid=None):

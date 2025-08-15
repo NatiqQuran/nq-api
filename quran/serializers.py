@@ -597,3 +597,24 @@ class TakhtitSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['uuid', 'creator', 'created_at', 'updated_at']
  
+class AyahBreakersResponseSerializer(serializers.Serializer):
+    """Serializer for the ayahs_breakers endpoint response"""
+    uuid = serializers.UUIDField(help_text="UUID of the ayah")
+    surah = serializers.IntegerField(help_text="Surah number")
+    ayah = serializers.IntegerField(help_text="Ayah number")
+    juz = serializers.IntegerField(allow_null=True, help_text="Juz number (null if not a juz breaker)")
+    hizb = serializers.IntegerField(allow_null=True, help_text="Hizb number (null if not a hizb breaker)")
+    ruku = serializers.IntegerField(allow_null=True, help_text="Ruku number (null if not a ruku breaker)")
+    page = serializers.IntegerField(allow_null=True, help_text="Page number (null if not a page breaker)")
+    rub = serializers.IntegerField(allow_null=True, help_text="Rub number (null if not a rub breaker)")
+    manzil = serializers.IntegerField(allow_null=True, help_text="Manzil number (null if not a manzil breaker)") 
+
+class WordBreakersResponseSerializer(serializers.Serializer):
+    """Serializer for the words_breakers endpoint response"""
+    word_uuid = serializers.UUIDField(help_text="UUID of the word")
+    line = serializers.IntegerField(help_text="Line number counter")
+
+class WordBreakerDetailResponseSerializer(serializers.Serializer):
+    """Serializer for individual word breaker responses"""
+    word_uuid = serializers.UUIDField(help_text="UUID of the word")
+    type = serializers.CharField(help_text="Breaker type (always 'line')") 

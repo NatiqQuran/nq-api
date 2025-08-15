@@ -31,6 +31,7 @@ from .serializers import (
     NotificationSerializer
 )
 from .pagination import CustomLimitOffsetPagination
+from rest_framework import serializers
 
 
 @extend_schema_view(
@@ -208,6 +209,61 @@ class NotificationViewSet(viewsets.ModelViewSet):
         return Response({'detail': 'Notification marked as opened.'})
 
 
+# Create response schema for health check
+class HealthCheckResponseSerializer(serializers.Serializer):
+    status = serializers.CharField(help_text="Overall health status: healthy, degraded, or unhealthy")
+    services = serializers.DictField(
+        child=serializers.DictField(
+            child=serializers.CharField(),
+            help_text="Service status information"
+        ),
+        help_text="Detailed status of individual services",
+        required=False
+    )
+
+@extend_schema(
+    summary="Health check endpoint",
+    description="Health check endpoint that verifies the status of PostgreSQL database, S3 storage, RabbitMQ, and Forced Alignment service connections. Returns detailed status information for staff users.",
+    responses={
+        200: HealthCheckResponseSerializer,
+        503: HealthCheckResponseSerializer
+    },
+    examples=[
+        OpenApiExample(
+            'Healthy Response Example',
+            value={
+                "status": "healthy",
+                "services": {
+                    "database": {"status": "healthy", "details": "Database connection successful"},
+                    "s3": {"status": "healthy", "details": "S3 connection successful"},
+                    "rabbitmq": {"status": "healthy", "details": "RabbitMQ connection successful"},
+                    "forced_alignment": {"status": "healthy", "details": "Forced alignment service is responding"}
+                }
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Degraded Response Example',
+            value={
+                "status": "degraded",
+                "services": {
+                    "database": {"status": "healthy", "details": "Database connection successful"},
+                    "s3": {"status": "unhealthy", "details": "AWS credentials not configured"},
+                    "rabbitmq": {"status": "healthy", "details": "RabbitMQ connection successful"},
+                    "forced_alignment": {"status": "healthy", "details": "Forced alignment service is responding"}
+                }
+            },
+            response_only=True
+        ),
+        OpenApiExample(
+            'Non-Staff User Response Example',
+            value={
+                "status": "healthy"
+            },
+            response_only=True
+        )
+    ]
+)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def health_check(request):

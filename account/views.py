@@ -9,32 +9,62 @@ from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from .serializers import ProfileSerializer, UserSerializer, GroupSerializer, LoginSerializer
 from rest_framework.authtoken.serializers import AuthTokenSerializer
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, extend_schema_view, inline_serializer
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
+
+# Response schemas for authentication endpoints
+class LoginResponseSerializer(serializers.Serializer):
+    token = serializers.CharField(help_text="Authentication token")
+    user = UserSerializer(help_text="User information")
+    expiry = serializers.DateTimeField(help_text="Token expiry time")
+
+class RegisterResponseSerializer(serializers.Serializer):
+    user = UserSerializer(help_text="User information")
+    token = serializers.CharField(help_text="Authentication token")
+
+class LogoutResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField(help_text="Logout confirmation message")
+
+class LogoutAllResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField(help_text="Logout all confirmation message")
 
 @extend_schema_view(
-    post=extend_schema(summary="Login with username and password to obtain a Knox token")
-)
-class LoginView(KnoxLoginView):
-    permission_classes = (permissions.AllowAny,)
-
-    @extend_schema(
+    post=extend_schema(
+        summary="Login with username and password to obtain a Knox token",
+        description="Authenticate user credentials and return an authentication token for API access",
         request=LoginSerializer,
         responses={
-            200: OpenApiResponse(
-                response=None,
-                description="Login successful, returns auth token."
-            ),
-            400: OpenApiResponse(description="Invalid credentials.")
+            200: LoginResponseSerializer,
+            400: OpenApiResponse(description="Invalid credentials or validation error"),
+            401: OpenApiResponse(description="Authentication failed")
         },
-        description="Login with username and password. Returns Knox token.",
         examples=[
             OpenApiExample(
                 'Login Example',
                 value={"username": "testuser", "password": "yourpassword"},
                 request_only=True
+            ),
+            OpenApiExample(
+                'Login Response Example',
+                value={
+                    "token": "knox_token_here",
+                    "user": {
+                        "username": "testuser",
+                        "email": "test@example.com",
+                        "first_name": "Test",
+                        "last_name": "User"
+                    },
+                    "expiry": "2024-12-31T23:59:59Z"
+                },
+                response_only=True
             )
         ]
     )
+)
+class LoginView(KnoxLoginView):
+    permission_classes = (permissions.AllowAny,)
+
     def post(self, request, format=None):
         serializer = AuthTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -52,14 +82,12 @@ class AuthViewSet(viewsets.GenericViewSet):
     @extend_schema(
         request=UserSerializer,
         summary="Register a new user account",
+        description="Create a new user account with username, password, email, and optional personal information. Returns user data and authentication token upon successful registration.",
         responses={
-            201: OpenApiResponse(
-                response=None,
-                description="User registered successfully, returns user data and token."
-            ),
-            400: OpenApiResponse(description="Validation error.")
+            201: RegisterResponseSerializer,
+            400: OpenApiResponse(description="Validation error or user already exists"),
+            422: OpenApiResponse(description="Password validation failed")
         },
-        description="Register a new user with username, password, and email.",
         examples=[
             OpenApiExample(
                 'Register Example',
@@ -72,6 +100,19 @@ class AuthViewSet(viewsets.GenericViewSet):
                     "last_name": "User"
                 },
                 request_only=True
+            ),
+            OpenApiExample(
+                'Register Response Example',
+                value={
+                    "user": {
+                        "username": "newuser",
+                        "email": "newuser@example.com",
+                        "first_name": "New",
+                        "last_name": "User"
+                    },
+                    "token": "knox_token_here"
+                },
+                response_only=True
             )
         ]
     )
@@ -96,11 +137,102 @@ from knox.views import LogoutView as KnoxLogoutView
 
 class LogoutView(KnoxLogoutView):
     @extend_schema(
-        responses={204: OpenApiResponse(description="Logout successful.")},
-        description="Logout current user (invalidate token)."
+        summary="Logout current user",
+        description="Invalidate the current user's authentication token. The user will need to login again to access protected endpoints.",
+        responses={
+            204: LogoutResponseSerializer,
+            401: OpenApiResponse(description="Authentication required")
+        },
+        examples=[
+            OpenApiExample(
+                'Logout Response Example',
+                value={"detail": "Successfully logged out."},
+                response_only=True
+            )
+        ]
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
+
+# Add LogoutAllView with proper schema
+from knox.views import LogoutAllView as KnoxLogoutAllView
+
+class LogoutAllView(KnoxLogoutAllView):
+    @extend_schema(
+        summary="Logout from all devices",
+        description="Invalidate all authentication tokens for the current user across all devices. The user will need to login again on any device to access protected endpoints.",
+        responses={
+            204: LogoutAllResponseSerializer,
+            401: OpenApiResponse(description="Authentication required")
+        },
+        examples=[
+            OpenApiExample(
+                'Logout All Response Example',
+                value={"detail": "Successfully logged out from all devices."},
+                response_only=True
+            )
+        ]
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+# Create a proper RegisterView for the register endpoint
+from rest_framework.views import APIView
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+    
+    @extend_schema(
+        request=UserSerializer,
+        summary="Register a new user account",
+        description="Create a new user account with username, password, email, and optional personal information. Returns user data and authentication token upon successful registration.",
+        responses={
+            201: RegisterResponseSerializer,
+            400: OpenApiResponse(description="Validation error or user already exists"),
+            422: OpenApiResponse(description="Password validation failed")
+        },
+        examples=[
+            OpenApiExample(
+                'Register Example',
+                value={
+                    "username": "newuser",
+                    "password": "yourpassword",
+                    "password2": "yourpassword",
+                    "email": "newuser@example.com",
+                    "first_name": "New",
+                    "last_name": "User"
+                },
+                request_only=True
+            ),
+            OpenApiExample(
+                'Register Response Example',
+                value={
+                    "user": {
+                        "username": "newuser",
+                        "email": "newuser@example.com",
+                        "first_name": "New",
+                        "last_name": "User"
+                    },
+                    "token": "knox_token_here"
+                },
+                response_only=True
+            )
+        ]
+    )
+    def post(self, request):
+        """
+        Register a new user with username, password, and email.
+        Returns user data and Knox token upon successful registration.
+        """
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            _, token = AuthToken.objects.create(user)
+            return Response({
+                'user': UserSerializer(user).data,
+                'token': token
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema_view(
     list=extend_schema(summary="List all users"),
