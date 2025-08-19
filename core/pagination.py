@@ -7,10 +7,10 @@ class CustomLimitOffsetPagination(LimitOffsetPagination):
     Custom pagination using Django REST Framework's LimitOffsetPagination.
     Uses 'limit' and 'offset' parameters for pagination.
     """
-    default_limit = 20
+    default_limit = 200
     limit_query_param = 'limit'
     offset_query_param = 'offset'
-    max_limit = 1000
+    max_limit = 10000
 
     def get_paginated_response(self, data):
         """

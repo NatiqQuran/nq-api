@@ -33,8 +33,15 @@ from quran.serializers import (
 )
 
 from core import permissions as core_permissions
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
-from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes, OpenApiExample, OpenApiTypes, OpenApiResponse
+# --- Reusable OpenAPI schema for language codes ---
+LANGCODE_SCHEMA = {
+    "type": "string",
+    "enum": [
+        "ber", "aa", "ab", "ae", "af", "ak", "am", "an", "ar", "as", "av", "ay", "az", "ba", "be", "bg", "bh", "bi", "bm", "bn", "bo", "br", "bs", "ca", "ce", "ch", "co", "cr", "cs", "cu", "cv", "cy", "da", "de", "dv", "dz", "ee", "el", "en", "eo", "es", "et", "eu", "fa", "ff", "fi", "fj", "fo", "fr", "fy", "ga", "gd", "gl", "gn", "gu", "gv", "ha", "he", "hi", "ho", "hr", "ht", "hu", "hy", "hz", "ia", "id", "ie", "ig", "ii", "ik", "io", "is", "it", "iu", "ja", "jv", "ka", "kg", "ki", "kj", "kk", "kl", "km", "kn", "ko", "kr", "ks", "ku", "kv", "kw", "ky", "la", "lb", "lg", "li", "ln", "lo", "lt", "lu", "lv", "mg", "mh", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my", "na", "nb", "nd", "ne", "ng", "nl", "nn", "no", "nr", "nv", "ny", "oc", "oj", "om", "or", "os", "pa", "pi", "pl", "ps", "pt", "qu", "rm", "rn", "ro", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sq", "sr", "ss", "st", "su", "sv", "sw", "ta", "te", "tg", "th", "ti", "tk", "tl", "tn", "to", "tr", "ts", "tt", "tw", "ty", "ug", "uk", "ur", "uz", "ve", "vi", "vo", "wa", "wo", "xh", "yi", "yo", "za", "zh", "zu"
+    ],
+    "description": "ISO 639-1 language code. See https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes"
+}
 from django_filters.rest_framework import DjangoFilterBackend
 from core.pagination import CustomLimitOffsetPagination
 from rest_framework.decorators import action
@@ -73,124 +80,6 @@ class MushafViewSet(viewsets.ModelViewSet):
     }
     lookup_field = "uuid"
 
-    @extend_schema(
-        summary="Import Ayah Breakers for the specified Mushaf",
-        description=(
-            "Accepts a JSON array of strings with the format \"{surah}:{ayah}\" that denote the ayah "
-            "at which a new breaker (page by default) begins. Existing breakers whose names start with the "
-            "provided breaker type (default: 'page') will be removed before importing the new ones.\n\n"
-            "Example request body (application/json):\n\n"
-            "[\n  \"2:1\",\n  \"2:6\",\n  \"2:17\"\n]"
-        ),
-        request={
-            "multipart/form-data": {
-                "type": "object",
-                "properties": {
-                    "file": {
-                        "type": "string",
-                        "format": "binary",
-                        "description": "Text/JSON file containing a list of breakers (e.g. ['2:1', '2:6'])."
-                    }
-                },
-                "required": ["file"]
-            }
-        },
-        methods=["POST"],
-        parameters=[
-            OpenApiParameter(
-                name="type",
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                required=False,
-                description="Breaker type (e.g., page, juz, hizb, ruku). Defaults to 'page'.",
-            ),
-        ],
-        responses={201: OpenApiTypes.OBJECT},
-    )
-    @action(detail=True, methods=["post"], url_path="import_breakers", parser_classes=[MultiPartParser, FormParser])
-    def import_breakers(self, request, *args, **kwargs):
-        """Import (upsert) ayah breakers for this Mushaf.
-
-        The endpoint expects the request body to be a JSON list of strings, each representing the
-        starting ayah of a breaker in the form "{surah}:{ayah}". Only the first token in the breaker
-        name is significant for the existing `ayah_map` logic, so breakers will be named using the
-        pattern "{breaker_type} {index}", where `breaker_type` defaults to "page".
-        """
-        from django.db import transaction
-        mushaf = self.get_object()
-
-        breaker_type = request.query_params.get("type", "page").lower()
-
-        # Expect a file upload similar to other import endpoints
-        BREAKERS_UPLOAD_MAX_SIZE = 5 * 1024 * 1024  # 5 MB should be plenty
-        file = request.FILES.get("file")
-        if not file:
-            return Response({"detail": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-        if file.size > BREAKERS_UPLOAD_MAX_SIZE:
-            return Response({"detail": f"File size exceeds the {BREAKERS_UPLOAD_MAX_SIZE} bytes limit."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            content = file.read().decode("utf-8").strip()
-            # Try JSON first
-            import json as _json
-            breakers_input = _json.loads(content)
-            if not isinstance(breakers_input, list):
-                raise ValueError
-        except Exception:
-            # Fallback: treat as newline-separated list
-            breakers_input = [line.strip() for line in content.splitlines() if line.strip()]
-
-        if not breakers_input:
-            return Response({"detail": "No breaker entries found in file."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Build lookup for surahs within this mushaf to avoid repeated DB hits
-        surahs_by_number = {
-            s.number: s for s in Surah.objects.filter(mushaf=mushaf).only("id", "number")
-        }
-
-        created, errors = 0, []
-
-        with transaction.atomic():
-            # Remove existing breakers for this mushaf of the same type to avoid duplicates
-            AyahBreaker.objects.filter(
-                ayah__surah__mushaf=mushaf, name__istartswith=breaker_type
-            ).delete()
-
-            for idx, ref in enumerate(breakers_input, start=1):
-                try:
-                    surah_num_str, ayah_num_str = ref.split(":", 1)
-                    surah_num = int(surah_num_str)
-                    ayah_num = int(ayah_num_str)
-                except (ValueError, AttributeError):
-                    errors.append({"entry": ref, "error": "Invalid format, expected 'surah:ayah'."})
-                    continue
-
-                surah = surahs_by_number.get(surah_num)
-                if not surah:
-                    errors.append({"entry": ref, "error": f"Surah {surah_num} not found in mushaf."})
-                    continue
-
-                try:
-                    ayah = Ayah.objects.only("id").get(surah=surah, number=ayah_num)
-                except Ayah.DoesNotExist:
-                    errors.append({"entry": ref, "error": f"Ayah {ayah_num} not found in surah {surah_num}."})
-                    continue
-
-                AyahBreaker.objects.create(
-                    creator=request.user,
-                    ayah=ayah,
-                    name=f"{breaker_type}"
-                )
-                created += 1
-
-        return Response(
-            {
-                "detail": f"Imported {created} {breaker_type} breakers.",
-                "created": created,
-                "errors": errors,
-            },
-            status=status.HTTP_201_CREATED,
-        )
 
     def get_queryset(self):
         # Optimize: Only fetch fields needed for the list action
@@ -499,7 +388,7 @@ class WordViewSet(viewsets.ModelViewSet):
             ),
             OpenApiParameter(
                 name="language",
-                type=OpenApiTypes.STR,
+                type=LANGCODE_SCHEMA,
                 location=OpenApiParameter.QUERY,
                 required=False,
                 description="Language code to filter Translations by."
@@ -1258,3 +1147,74 @@ class TakhtitViewSet(viewsets.ModelViewSet):
             return Response({"detail": "WordBreaker not found."}, status=404)
         # Return only the word UUID and type
         return Response({"word_uuid": str(breaker.word.uuid), "type": breaker.type})
+    
+    @extend_schema(
+        summary="Import Ayah Breakers for the specified Takhtit",
+        description=(
+            "Accepts a JSON array of strings with the format \"{surah}:{ayah}\" that denote the ayah "
+            "at which a new breaker (page by default) begins. Existing breakers whose names start with the "
+            "provided breaker type (default: 'page') will be removed before importing the new ones.\n\n"
+            "Example request body (application/json):\n\n"
+            "[\n  \"2:1\",\n  \"2:6\",\n  \"2:17\"\n]"
+        ),
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "description": "Text/JSON file containing a list of breakers (e.g. ['2:1', '2:6'])."
+                    }
+                },
+                "required": ["file"]
+            }
+        },
+        methods=["POST"],
+        parameters=[
+            OpenApiParameter(
+                name="type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Breaker type (e.g., page, juz, hizb, ruku). Defaults to 'page'.",
+            ),
+        ],
+        responses={201: OpenApiTypes.OBJECT},
+    )
+    @action(detail=True, methods=["post"], url_path="import", parser_classes=[MultiPartParser, FormParser])
+    def import_breakers(self, request, pk=None):
+        """
+        Import Ayah Breakers for the specified Takhtit.
+        """
+        import json
+        from quran.models import Ayah, AyahBreaker, AyahBreakerType, Surah, Takhtit
+        takhtit = self.get_object()
+        breaker_type = request.query_params.get('type', 'page')
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'detail': 'No file uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            data = json.load(file)
+        except Exception as e:
+            return Response({'detail': f'Invalid file: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(data, list):
+            return Response({'detail': 'File must contain a list of breakers.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Remove existing breakers of this type for this takhtit
+        AyahBreaker.objects.filter(takhtit=takhtit, type=breaker_type).delete()
+        created = 0
+        for item in data:
+            try:
+                surah_num, ayah_num = map(int, item.split(':'))
+                surah = Surah.objects.get(number=surah_num, mushaf=takhtit.mushaf)
+                ayah = Ayah.objects.get(surah=surah, number=ayah_num)
+                AyahBreaker.objects.create(
+                    ayah=ayah,
+                    takhtit=takhtit,
+                    type=breaker_type,
+                    creator=request.user
+                )
+                created += 1
+            except Exception as e:
+                continue
+        return Response({'created': created}, status=status.HTTP_201_CREATED)
