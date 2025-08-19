@@ -42,11 +42,22 @@ class SurahSerializer(serializers.ModelSerializer):
     mushaf_uuid = serializers.UUIDField(write_only=True, required=True)
     name = serializers.CharField(write_only=True, required=True)
     number_of_ayahs = serializers.SerializerMethodField(read_only=True)
+    bismillah = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Surah
-        fields = ['uuid', 'mushaf', 'mushaf_uuid', 'name', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs']
+        fields = ['uuid', 'mushaf', 'mushaf_uuid', 'name', 'names', 'number', 'period', 'search_terms', 'number_of_ayahs', 'bismillah']
         read_only_fields = ['creator']
+
+    def get_bismillah(self, instance):
+        # Get the first ayah of this surah
+        first_ayah = instance.ayahs.order_by('number').first()
+        text = first_ayah.bismillah_text if first_ayah and first_ayah.bismillah_text is not None else ""
+        is_ayah = first_ayah.is_bismillah if first_ayah else False
+        return {
+            'is_ayah': is_ayah,
+            'text': text
+        }
 
     def get_number_of_ayahs(self, instance):
         return instance.ayahs.count()
@@ -175,11 +186,13 @@ class AyahSerializer(serializers.ModelSerializer):
         return ayah_breakers.get(instance.id, None)
 
     def get_bismillah(self, instance):
-        if not instance.is_bismillah:
-            return None
+        # Always return a bismillah object with text (never null)
+        text = instance.bismillah_text
+        if text is None:
+            text = ""
         return {
             'is_ayah': instance.is_bismillah,
-            'text': instance.bismillah_text
+            'text': text
         }
 
     def to_representation(self, instance):
@@ -188,6 +201,14 @@ class AyahSerializer(serializers.ModelSerializer):
         for field in ['breakers', 'sajdah', 'bismillah', 'surah']:
             if field in representation and representation[field] is None:
                 representation.pop(field)
+            # Move bismillah into surah for the first ayah
+            if instance.number == 1 and 'bismillah' in representation and 'surah' in representation:
+                if representation['surah'] is not None:
+                    # If surah is a dict, add bismillah to it
+                    if isinstance(representation['surah'], dict):
+                        representation['surah']['bismillah'] = representation['bismillah']
+                    # Remove bismillah from top level
+                    representation.pop('bismillah', None)
         return representation
 
     def create(self, validated_data):
@@ -254,9 +275,19 @@ class AyahTranslationNestedSerializer(serializers.ModelSerializer):
             return obj.bismillah
         return None
 
+class LangCodeField(serializers.ChoiceField):
+    """A field for ISO 639-1 language codes."""
+    def __init__(self, **kwargs):
+        LANGCODES = [
+            "ar", "en", "fr", "ur", "tr", "id", "fa", "ru", "es", "de", "bn", "zh", "ms", "hi", "sw", "ps", "ku", "az", "ha", "so", "ta", "te", "ml", "pa", "sd", "ug", "uz", "kk", "ky", "tk", "tg", "syr", "ber", "am", "om", "wo", "yo", "other"
+        ]
+        super().__init__(choices=LANGCODES, **kwargs)
+
+
 class TranslationSerializer(serializers.ModelSerializer):
     mushaf_uuid = serializers.SerializerMethodField()
     translator_uuid = serializers.SerializerMethodField()
+    language = LangCodeField()
 
     class Meta:
         model = Translation
