@@ -175,6 +175,10 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Natiq Quran API',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    # Postprocessing hooks to adjust generated OpenAPI schema
+    'POSTPROCESSING_HOOKS': [
+        'api.schema_hooks.set_ordering_enum',
+    ],
     # Tag order and descriptions for the OpenAPI schema
     'TAGS': [
         {
