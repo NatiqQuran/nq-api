@@ -152,10 +152,14 @@ class MushafViewSet(viewsets.ModelViewSet):
         parameters=[
             OpenApiParameter(
                 name="mushaf",
-                type=OpenApiTypes.STR,
+                type={
+                    "type": "string",
+                    "enum": ["hafs"],
+                },
                 location=OpenApiParameter.QUERY,
                 required=True,
-                description="Short name of the Mushaf to filter Surahs by."
+                description="Short name of the Mushaf to filter Surahs by. Common value: 'hafs'. Any string is accepted. (e.g. 'hafs', 'warsh', etc.)",
+                examples=[OpenApiExample('hafs', value='hafs', summary='Most common')]
             )
         ],
         tags=["general", "surahs"],
@@ -381,10 +385,14 @@ class WordViewSet(viewsets.ModelViewSet):
         parameters=[
             OpenApiParameter(
                 name="mushaf",
-                type=OpenApiTypes.STR,
+                type={
+                    "type": "string",
+                    "enum": ["hafs"]
+                },
                 location=OpenApiParameter.QUERY,
                 required=True,
-                description="Short name of the Mushaf to filter Translations by."
+                description="Short name of the Mushaf to filter Translations by. Common value: 'hafs'. Any string is accepted. (e.g. 'hafs', 'warsh', etc.)",
+                examples=[OpenApiExample('hafs', value='hafs', summary='Most common')]
             ),
             OpenApiParameter(
                 name="language",
@@ -659,10 +667,14 @@ class TranslationViewSet(viewsets.ModelViewSet):
         parameters=[
             OpenApiParameter(
                 name="mushaf",
-                type=OpenApiTypes.STR,
+                type={
+                    "type": "string",
+                    "enum": ["hafs"]
+                },
                 location=OpenApiParameter.QUERY,
                 required=True,
-                description="Short name of the Mushaf to filter Recitations by."
+                description="Short name of the Mushaf to filter Recitations by. Common value: 'hafs'. Any string is accepted. (e.g. 'hafs', 'warsh', etc.)",
+                examples=[OpenApiExample('hafs', value='hafs', summary='Most common')]
             ),
             OpenApiParameter(
                 name="reciter_uuid",
@@ -879,10 +891,14 @@ class RecitationViewSet(viewsets.ModelViewSet):
         parameters=[
             OpenApiParameter(
                 name="mushaf",
-                type=OpenApiTypes.STR,
+                type={
+                    "type": "string",
+                    "enum": ["hafs"]
+                },
                 location=OpenApiParameter.QUERY,
                 required=False,
-                description="Short name of the Mushaf to filter Takhtits by."
+                description="Short name of the Mushaf to filter Takhtits by. Common value: 'hafs'. Any string is accepted. (e.g. 'hafs', 'warsh', etc.)",
+                examples=[OpenApiExample('hafs', value='hafs', summary='Most common')]
             )
         ],
         tags=["general", "takhtits"],
