@@ -100,7 +100,6 @@ nq-api/
 ├── 📁 account/         # User management app
 ├── 📁 api/             # Core API configuration and routing
 ├── 📁 core/            # Core functionalities
-├── 📁 data/            # Data files
 ├── 📁 quran/           # Quran-related app (Surahs, Ayahs, etc.)
 ├── 📄 .dockerignore
 ├── 📄 .gitignore
