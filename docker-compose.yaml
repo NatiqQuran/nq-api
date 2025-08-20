@@ -1,5 +1,5 @@
 services:
-  db:
+  postgres-db:
     image: public.ecr.aws/docker/library/postgres:14.15-alpine3.21
     environment:
       POSTGRES_DB: postgres
@@ -15,7 +15,7 @@ services:
     ports:
       - "5432:5432"
 
-  api:
+  nq-api:
     image: natiqquran/nq-api:latest
     container_name: nq-api
     ports:
@@ -31,7 +31,7 @@ services:
       DEBUG: 1
       DJANGO_LOGLEVEL: info
       DJANGO_ALLOWED_HOSTS: localhost
-      DJANGO_CORS_ALLOWED_ORIGINS: localhost
+      DJANGO_CORS_ALLOWED_ORIGINS: *
       CSRF_TRUSTED_ORIGINS: http://localhost:8001
       DATABASE_NAME: postgres
       DATABASE_USERNAME: postgres
@@ -42,7 +42,7 @@ services:
       FORCED_ALIGNMENT_SECRET_KEY: bruh
       CELERY_BROKER_URL: rabbitmq
 
-  frontend-proxy:
+  nginx:
     image: nginx:latest
     ports:
       - "80:80"
