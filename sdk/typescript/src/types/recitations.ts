@@ -1,10 +1,5 @@
 
-export interface RecitationsListResponseData {
-    count: number;
-    next?: string;
-    previous?: string;
-    results: object[];
-}
+export type RecitationsListResponseData = RecitationList[];
 export interface RecitationsListRequestParams {
     limit?: number;
     mushaf: string;
@@ -119,4 +114,18 @@ export interface RecitationsPartialupdateResponseData {
     words_timestamps: string;
 }
 export interface RecitationsRecitations_upload_createResponseData {
+}
+
+
+export interface RecitationList {
+    uuid: string;
+    recitation_date: string;
+    recitation_location: string;
+    recitation_type: string;
+    duration: string;
+    status?: 'draft' | 'pending_review' | 'published';
+    reciter_account_uuid: string;
+    mushaf_uuid: string;
+    created_at: string;
+    updated_at: string;
 }

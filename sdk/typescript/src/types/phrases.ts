@@ -8,8 +8,7 @@ export interface PhrasesModifyResponseData {
 export interface PhrasesModifyRequestParams {
     language: string;
 }
-export interface PhrasesListResponseData {
-}
+export type PhrasesListResponseData = Phrase[];
 export interface PhrasesCreateRequestData {
     phrase: string;
     uuid: string;
@@ -37,4 +36,10 @@ export interface PhrasesPartialupdateRequestData {
 export interface PhrasesPartialupdateResponseData {
     phrase: string;
     uuid: string;
+}
+
+
+export interface Phrase {
+    uuid: string;
+    phrase: string;
 }

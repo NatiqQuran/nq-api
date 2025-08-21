@@ -8,12 +8,7 @@ export interface TranslationsImportResponseData {
     translator_uuid: string;
     uuid: string;
 }
-export interface TranslationsListResponseData {
-    count: number;
-    next?: string;
-    previous?: string;
-    results: object[];
-}
+export type TranslationsListResponseData = TranslationList[];
 export interface TranslationsListRequestParams {
     language?: string;
     limit?: number;
@@ -85,12 +80,7 @@ export interface TranslationsPartialupdateResponseData {
     translator_uuid: string;
     uuid: string;
 }
-export interface TranslationsTranslations_ayahs_listResponseData {
-    count: number;
-    next?: string;
-    previous?: string;
-    results: object[];
-}
+export type TranslationsTranslations_ayahs_listResponseData = AyahTranslation[];
 export interface TranslationsTranslations_ayahs_listRequestParams {
     limit?: number;
     offset?: number;
@@ -126,4 +116,15 @@ export interface TranslationsTranslations_ayahs_updateResponseData {
     text: string;
     translation_uuid: string;
     uuid: string;
+}
+
+
+export interface TranslationList {
+    uuid: string;
+    language: string;
+    source?: string;
+    release_date?: string;
+    status?: 'draft' | 'pending_review' | 'published';
+    translator_uuid: string;
+    mushaf_uuid: string;
 }

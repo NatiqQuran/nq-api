@@ -1,10 +1,5 @@
 
-export interface SurahsListResponseData {
-    count: number;
-    next?: string;
-    previous?: string;
-    results: object[];
-}
+export type SurahsListResponseData = Surah[];
 export interface SurahsListRequestParams {
     limit?: number;
     mushaf: string;
@@ -37,7 +32,7 @@ export interface SurahsCreateResponseData {
     uuid: string;
 }
 export interface SurahsRetrieveResponseData {
-    ayahs: object[];
+    ayahs: AyahInSurah[];
     bismillah: string;
     mushaf: object;
     mushaf_uuid: string;
@@ -96,4 +91,28 @@ export interface SurahsPartialupdateResponseData {
     period?: 'makki' | 'madani';
     search_terms?: string;
     uuid: string;
+}
+
+
+export interface Surah {
+    uuid: string;
+    name: string;
+    names: string;
+    number: number;
+    number_of_ayahs: string;
+    bismillah: string;
+    period?: 'makki' | 'madani';
+    search_terms?: string;
+    mushaf: object;
+    mushaf_uuid: string;
+}
+
+export interface Ayah {
+    uuid: string;
+    number: number;
+    text: string;
+    bismillah?: string;
+    breakers?: string;
+    sajdah?: string;
+    surah?: string;
 }

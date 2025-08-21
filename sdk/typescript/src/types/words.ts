@@ -1,10 +1,5 @@
 
-export interface WordsListResponseData {
-    count: number;
-    next?: string;
-    previous?: string;
-    results: object[];
-}
+export type WordsListResponseData = Word[];
 export interface WordsListRequestParams {
     ayah_uuid?: string;
     limit?: number;
@@ -49,4 +44,11 @@ export interface WordsPartialupdateResponseData {
     ayah_uuid: string;
     text: string;
     uuid: string;
+}
+
+
+export interface Word {
+    uuid: string;
+    text: string;
+    ayah_uuid: string;
 }

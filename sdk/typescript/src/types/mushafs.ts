@@ -6,12 +6,7 @@ export interface MushafsImportResponseData {
     status?: 'draft' | 'pending_review' | 'published';
     uuid: string;
 }
-export interface MushafsListResponseData {
-    count: number;
-    next?: string;
-    previous?: string;
-    results: object[];
-}
+export type MushafsListResponseData = Mushaf[];
 export interface MushafsListRequestParams {
     limit?: number;
     offset?: number;
@@ -66,4 +61,13 @@ export interface MushafsPartialupdateResponseData {
     source?: string;
     status?: 'draft' | 'pending_review' | 'published';
     uuid: string;
+}
+
+
+export interface Mushaf {
+    uuid: string;
+    name: string;
+    short_name: string;
+    source?: string;
+    status?: 'draft' | 'pending_review' | 'published';
 }

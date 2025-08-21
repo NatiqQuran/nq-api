@@ -1,6 +1,5 @@
 
-export interface GroupsListResponseData {
-}
+export type GroupsListResponseData = Group[];
 export interface GroupsCreateRequestData {
     name: string;
     url: string;
@@ -28,4 +27,11 @@ export interface GroupsPartialupdateRequestData {
 export interface GroupsPartialupdateResponseData {
     name: string;
     url: string;
+}
+
+
+export interface Group {
+    uuid: string;
+    name: string;
+    url?: string;
 }

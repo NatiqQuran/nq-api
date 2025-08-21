@@ -1,6 +1,5 @@
 
-export interface UsersListResponseData {
-}
+export type UsersListResponseData = User[];
 export interface UsersCreateRequestData {
     email: string;
     first_name?: string;
@@ -56,4 +55,15 @@ export interface UsersPartialupdateResponseData {
     password: string;
     password2: string;
     username: string;
+}
+
+
+export interface User {
+    uuid: string;
+    username: string;
+    email: string;
+    first_name?: string;
+    last_name?: string;
+    password: string;
+    password2: string;
 }

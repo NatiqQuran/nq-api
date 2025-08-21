@@ -20,3 +20,4 @@ export interface AuthRegisterResponseData {
     token: string;
     user: object;
 }
+
