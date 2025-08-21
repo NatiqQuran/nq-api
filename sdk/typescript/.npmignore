@@ -1,0 +1,15 @@
+# Exclude everything except essential files
+/src/
+/tests/
+/scripts/
+/*.ts
+/dist/
+/types/
+tsconfig.json
+
+# Include the built files in the final package
+!dist/
+
+# Include the README and LICENSE files
+!README.md
+!LICENSE
