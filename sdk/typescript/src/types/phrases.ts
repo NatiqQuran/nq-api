@@ -1,8 +1,8 @@
 
-export interface PhrasesModifyRequestData {
+export interface PhrasesModifyPostRequestData {
     phrases: object;
 }
-export interface PhrasesModifyResponseData {
+export interface PhrasesModifyPostResponseData {
     phrases: object;
 }
 export interface PhrasesModifyRequestParams {

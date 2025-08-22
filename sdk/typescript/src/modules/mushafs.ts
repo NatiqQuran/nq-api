@@ -10,7 +10,7 @@ export class MushafsImport extends BaseController {
     }
     /** POST /mushafs/import/ */
     async mushafs_import_create(config?: RequestConfig
-    ): Promise<AxiosResponse<MushafsType.MushafsImportResponseData>> {
+    ): Promise<AxiosResponse<MushafsType.MushafsImportPostResponseData>> {
         return await this.axiosPost(`/mushafs/import/`, config);
     }
 }
@@ -30,31 +30,31 @@ export class MushafsController extends BaseController {
     }
     
     /** POST /mushafs/ */
-    async create(data: MushafsType.MushafsCreateRequestData,config?: RequestConfig
+    async create(data: MushafsType.MushafsCreateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<MushafsType.MushafsCreateResponseData>> {
         return await this.axiosPost(`/mushafs/`, data, config);
     }
     
     /** GET /mushafs/{uuid}/ */
-    async retrieve(uuid: string,config?: RequestConfig
+    async retrieve(uuid: string, config?: RequestConfig
     ): Promise<AxiosResponse<MushafsType.MushafsRetrieveResponseData>> {
         return await this.axiosGet(`/mushafs/${uuid}/`, config);
     }
     
     /** PUT /mushafs/{uuid}/ */
-    async update(uuid: string,data: MushafsType.MushafsUpdateRequestData,config?: RequestConfig
+    async update(uuid: string, data: MushafsType.MushafsUpdateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<MushafsType.MushafsUpdateResponseData>> {
         return await this.axiosPut(`/mushafs/${uuid}/`, data, config);
     }
     
     /** PATCH /mushafs/{uuid}/ */
-    async partialUpdate(uuid: string,data: MushafsType.MushafsPartialupdateRequestData,config?: RequestConfig
+    async partialUpdate(uuid: string, data: MushafsType.MushafsPartialupdateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<MushafsType.MushafsPartialupdateResponseData>> {
         return await this.axiosPatch(`/mushafs/${uuid}/`, data, config);
     }
     
     /** DELETE /mushafs/{uuid}/ */
-    async delete(uuid: string,config?: RequestConfig
+    async delete(uuid: string, config?: RequestConfig
     ): Promise<AxiosResponse<any>> {
         return await this.axiosDelete(`/mushafs/${uuid}/`, config);
     }

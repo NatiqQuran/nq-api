@@ -17,31 +17,31 @@ export class UsersController extends BaseController {
     }
     
     /** POST /users/ */
-    async create(data: UsersType.UsersCreateRequestData,config?: RequestConfig
+    async create(data: UsersType.UsersCreateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<UsersType.UsersCreateResponseData>> {
         return await this.axiosPost(`/users/`, data, config);
     }
     
     /** GET /users/{uuid}/ */
-    async retrieve(uuid: string,config?: RequestConfig
+    async retrieve(uuid: string, config?: RequestConfig
     ): Promise<AxiosResponse<UsersType.UsersRetrieveResponseData>> {
         return await this.axiosGet(`/users/${uuid}/`, config);
     }
     
     /** PUT /users/{uuid}/ */
-    async update(uuid: string,data: UsersType.UsersUpdateRequestData,config?: RequestConfig
+    async update(uuid: string, data: UsersType.UsersUpdateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<UsersType.UsersUpdateResponseData>> {
         return await this.axiosPut(`/users/${uuid}/`, data, config);
     }
     
     /** PATCH /users/{uuid}/ */
-    async partialUpdate(uuid: string,data: UsersType.UsersPartialupdateRequestData,config?: RequestConfig
+    async partialUpdate(uuid: string, data: UsersType.UsersPartialupdateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<UsersType.UsersPartialupdateResponseData>> {
         return await this.axiosPatch(`/users/${uuid}/`, data, config);
     }
     
     /** DELETE /users/{uuid}/ */
-    async delete(uuid: string,config?: RequestConfig
+    async delete(uuid: string, config?: RequestConfig
     ): Promise<AxiosResponse<any>> {
         return await this.axiosDelete(`/users/${uuid}/`, config);
     }

@@ -1,17 +1,17 @@
 
-export interface ProfileMeResponseData {
+export interface ProfileMeGetResponseData {
     email?: string;
     first_name?: string;
     last_name?: string;
     username: string;
 }
-export interface ProfileMeRequestData {
+export interface ProfileMePostRequestData {
     email?: string;
     first_name?: string;
     last_name?: string;
     username: string;
 }
-export interface ProfileMeResponseData {
+export interface ProfileMePostResponseData {
     email?: string;
     first_name?: string;
     last_name?: string;

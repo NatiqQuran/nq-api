@@ -1,3 +1,4 @@
+import { Word } from "./words";
 
 export type AyahsListResponseData = Ayah[];
 export interface AyahsListRequestParams {
@@ -86,4 +87,13 @@ export interface AyahTranslation {
     ayah_uuid: string;
     translation_uuid: string;
     bismillah?: string;
+}
+
+export interface AyahInSurah {
+    uuid: string;
+    number: number;
+    sajdah?: string;
+    is_bismillah?: boolean;
+    bismillah_text?: string;
+    text: string;
 }

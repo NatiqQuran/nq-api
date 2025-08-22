@@ -10,12 +10,12 @@ export class ProfileMe extends BaseController {
     }
     /** GET /profile/me/ */
     async profile_me_retrieve(config?: RequestConfig
-    ): Promise<AxiosResponse<ProfileType.ProfileMeResponseData>> {
+    ): Promise<AxiosResponse<ProfileType.ProfileMeGetResponseData>> {
         return await this.axiosGet(`/profile/me/`, config);
     }
     /** POST /profile/me/ */
-    async profile_me_create(data: ProfileType.ProfileMeRequestData, config?: RequestConfig
-    ): Promise<AxiosResponse<ProfileType.ProfileMeResponseData>> {
+    async profile_me_create(data: ProfileType.ProfileMePostRequestData, config?: RequestConfig
+    ): Promise<AxiosResponse<ProfileType.ProfileMePostResponseData>> {
         return await this.axiosPost(`/profile/me/`, data, config);
     }
 }
@@ -29,7 +29,7 @@ export class ProfileController extends BaseController {
     }
     
     /** GET /profile/{uuid}/ */
-    async retrieve(uuid: string,config?: RequestConfig
+    async retrieve(uuid: string, config?: RequestConfig
     ): Promise<AxiosResponse<ProfileType.ProfileRetrieveResponseData>> {
         return await this.axiosGet(`/profile/${uuid}/`, config);
     }

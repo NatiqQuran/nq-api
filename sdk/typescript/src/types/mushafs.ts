@@ -1,5 +1,5 @@
 
-export interface MushafsImportResponseData {
+export interface MushafsImportPostResponseData {
     name: string;
     short_name: string;
     source?: string;

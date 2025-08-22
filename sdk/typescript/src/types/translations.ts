@@ -1,5 +1,14 @@
+import { AyahTranslation } from "./ayahs";
 
-export interface TranslationsImportResponseData {
+export type TranslationsAyahsGetResponseData = AyahTranslation[];
+export interface TranslationsAyahsRequestParams {
+    limit?: number;
+    offset?: number;
+    ordering?: string;
+    search?: string;
+    surah_uuid?: string;
+}
+export interface TranslationsImportPostResponseData {
     language: string;
     mushaf_uuid: string;
     release_date?: string;
@@ -80,37 +89,29 @@ export interface TranslationsPartialupdateResponseData {
     translator_uuid: string;
     uuid: string;
 }
-export type TranslationsTranslations_ayahs_listResponseData = AyahTranslation[];
-export interface TranslationsTranslations_ayahs_listRequestParams {
-    limit?: number;
-    offset?: number;
-    ordering?: string;
-    search?: string;
-    surah_uuid?: string;
-}
-export interface TranslationsTranslations_ayahs_retrieveResponseData {
+export interface TranslationsAyahsResourceGetResponseData {
     ayah_uuid: string;
     bismillah?: string;
     text: string;
     translation_uuid: string;
     uuid: string;
 }
-export interface TranslationsTranslations_ayahs_createRequestData {
+export interface TranslationsAyahsResourcePostRequestData {
     bismillah?: boolean;
     text: string;
 }
-export interface TranslationsTranslations_ayahs_createResponseData {
+export interface TranslationsAyahsResourcePostResponseData {
     ayah_uuid: string;
     bismillah?: string;
     text: string;
     translation_uuid: string;
     uuid: string;
 }
-export interface TranslationsTranslations_ayahs_updateRequestData {
+export interface TranslationsAyahsResourcePutRequestData {
     bismillah?: boolean;
     text: string;
 }
-export interface TranslationsTranslations_ayahs_updateResponseData {
+export interface TranslationsAyahsResourcePutResponseData {
     ayah_uuid: string;
     bismillah?: string;
     text: string;

@@ -1,4 +1,27 @@
 
+export type TakhtitsAyahs_breakersGetResponseData = AyahBreakersResponse[];
+export interface TakhtitsAyahs_breakersPostRequestData {
+    ayah_uuid: string;
+    type: string;
+}
+export interface TakhtitsAyahs_breakersPostResponseData {
+    type: 'page' | 'juz' | 'hizb' | 'rub' | 'manzil' | 'ruku';
+    uuid: string;
+}
+export interface TakhtitsImportPostResponseData {
+}
+export interface TakhtitsImportRequestParams {
+    type?: string;
+}
+export type TakhtitsWords_breakersGetResponseData = WordBreakersResponse[];
+export interface TakhtitsWords_breakersPostRequestData {
+    type: string;
+    word_uuid: string;
+}
+export interface TakhtitsWords_breakersPostResponseData {
+    type: string;
+    word_uuid: string;
+}
 export type TakhtitsListResponseData = Takhtit[];
 export interface TakhtitsListRequestParams {
     mushaf?: string;
@@ -49,34 +72,11 @@ export interface TakhtitsPartialupdateResponseData {
     mushaf: number;
     uuid: string;
 }
-export type TakhtitsTakhtits_ayahs_breakers_listResponseData = AyahBreakersResponse[];
-export interface TakhtitsTakhtits_ayahs_breakers_createRequestData {
-    ayah_uuid: string;
-    type: string;
-}
-export interface TakhtitsTakhtits_ayahs_breakers_createResponseData {
+export interface TakhtitsAyahs_breakersResourceGetResponseData {
     type: 'page' | 'juz' | 'hizb' | 'rub' | 'manzil' | 'ruku';
     uuid: string;
 }
-export interface TakhtitsTakhtits_ayahs_breakers_retrieveResponseData {
-    type: 'page' | 'juz' | 'hizb' | 'rub' | 'manzil' | 'ruku';
-    uuid: string;
-}
-export interface TakhtitsTakhtits_import_createResponseData {
-}
-export interface TakhtitsTakhtits_import_createRequestParams {
-    type?: string;
-}
-export type TakhtitsTakhtits_words_breakers_listResponseData = WordBreakersResponse[];
-export interface TakhtitsTakhtits_words_breakers_createRequestData {
-    type: string;
-    word_uuid: string;
-}
-export interface TakhtitsTakhtits_words_breakers_createResponseData {
-    type: string;
-    word_uuid: string;
-}
-export interface TakhtitsTakhtits_words_breakers_retrieveResponseData {
+export interface TakhtitsWords_breakersResourceGetResponseData {
     type: string;
     word_uuid: string;
 }

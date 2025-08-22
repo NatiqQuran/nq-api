@@ -1,15 +1,15 @@
 
-export type NotificationsMeResponseData = Notification[];
+export type NotificationsMeGetResponseData = Notification[];
 export interface NotificationsMeRequestParams {
     limit?: number;
     offset?: number;
 }
-export interface NotificationsOpenedResponseData {
+export interface NotificationsOpenedGetResponseData {
 }
 export interface NotificationsOpenedRequestParams {
     uuid: string;
 }
-export interface NotificationsViewedResponseData {
+export interface NotificationsViewedGetResponseData {
 }
 export type NotificationsListResponseData = Notification[];
 export interface NotificationsListRequestParams {

@@ -17,31 +17,31 @@ export class GroupsController extends BaseController {
     }
     
     /** POST /groups/ */
-    async create(data: GroupsType.GroupsCreateRequestData,config?: RequestConfig
+    async create(data: GroupsType.GroupsCreateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<GroupsType.GroupsCreateResponseData>> {
         return await this.axiosPost(`/groups/`, data, config);
     }
     
     /** GET /groups/{id}/ */
-    async retrieve(id: string,config?: RequestConfig
+    async retrieve(id: string, config?: RequestConfig
     ): Promise<AxiosResponse<GroupsType.GroupsRetrieveResponseData>> {
         return await this.axiosGet(`/groups/${id}/`, config);
     }
     
     /** PUT /groups/{id}/ */
-    async update(id: string,data: GroupsType.GroupsUpdateRequestData,config?: RequestConfig
+    async update(id: string, data: GroupsType.GroupsUpdateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<GroupsType.GroupsUpdateResponseData>> {
         return await this.axiosPut(`/groups/${id}/`, data, config);
     }
     
     /** PATCH /groups/{id}/ */
-    async partialUpdate(id: string,data: GroupsType.GroupsPartialupdateRequestData,config?: RequestConfig
+    async partialUpdate(id: string, data: GroupsType.GroupsPartialupdateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<GroupsType.GroupsPartialupdateResponseData>> {
         return await this.axiosPatch(`/groups/${id}/`, data, config);
     }
     
     /** DELETE /groups/{id}/ */
-    async delete(id: string,config?: RequestConfig
+    async delete(id: string, config?: RequestConfig
     ): Promise<AxiosResponse<any>> {
         return await this.axiosDelete(`/groups/${id}/`, config);
     }

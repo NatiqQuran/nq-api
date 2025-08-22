@@ -113,7 +113,7 @@ export interface RecitationsPartialupdateResponseData {
     uuid: string;
     words_timestamps: string;
 }
-export interface RecitationsRecitations_upload_createResponseData {
+export interface RecitationsUploadResourcePostResponseData {
 }
 
 

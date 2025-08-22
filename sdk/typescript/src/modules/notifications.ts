@@ -10,7 +10,7 @@ export class NotificationsMe extends BaseController {
     }
     /** GET /notifications/me/ */
     async notifications_me_list(config?: RequestConfig<NotificationsType.NotificationsMeRequestParams>
-    ): Promise<AxiosResponse<NotificationsType.NotificationsMeResponseData>> {
+    ): Promise<AxiosResponse<NotificationsType.NotificationsMeGetResponseData>> {
         return await this.axiosGet(`/notifications/me/`, config);
     }
 }
@@ -21,7 +21,7 @@ export class NotificationsOpened extends BaseController {
     }
     /** GET /notifications/opened/ */
     async notifications_opened_retrieve(config?: RequestConfig<NotificationsType.NotificationsOpenedRequestParams>
-    ): Promise<AxiosResponse<NotificationsType.NotificationsOpenedResponseData>> {
+    ): Promise<AxiosResponse<NotificationsType.NotificationsOpenedGetResponseData>> {
         return await this.axiosGet(`/notifications/opened/`, config);
     }
 }
@@ -32,7 +32,7 @@ export class NotificationsViewed extends BaseController {
     }
     /** GET /notifications/viewed/ */
     async notifications_viewed_retrieve(config?: RequestConfig
-    ): Promise<AxiosResponse<NotificationsType.NotificationsViewedResponseData>> {
+    ): Promise<AxiosResponse<NotificationsType.NotificationsViewedGetResponseData>> {
         return await this.axiosGet(`/notifications/viewed/`, config);
     }
 }
@@ -56,31 +56,31 @@ export class NotificationsController extends BaseController {
     }
     
     /** POST /notifications/ */
-    async create(data: NotificationsType.NotificationsCreateRequestData,config?: RequestConfig
+    async create(data: NotificationsType.NotificationsCreateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<NotificationsType.NotificationsCreateResponseData>> {
         return await this.axiosPost(`/notifications/`, data, config);
     }
     
     /** GET /notifications/{id}/ */
-    async retrieve(id: string,config?: RequestConfig
+    async retrieve(id: string, config?: RequestConfig
     ): Promise<AxiosResponse<NotificationsType.NotificationsRetrieveResponseData>> {
         return await this.axiosGet(`/notifications/${id}/`, config);
     }
     
     /** PUT /notifications/{id}/ */
-    async update(id: string,data: NotificationsType.NotificationsUpdateRequestData,config?: RequestConfig
+    async update(id: string, data: NotificationsType.NotificationsUpdateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<NotificationsType.NotificationsUpdateResponseData>> {
         return await this.axiosPut(`/notifications/${id}/`, data, config);
     }
     
     /** PATCH /notifications/{id}/ */
-    async partialUpdate(id: string,data: NotificationsType.NotificationsPartialupdateRequestData,config?: RequestConfig
+    async partialUpdate(id: string, data: NotificationsType.NotificationsPartialupdateRequestData, config?: RequestConfig
     ): Promise<AxiosResponse<NotificationsType.NotificationsPartialupdateResponseData>> {
         return await this.axiosPatch(`/notifications/${id}/`, data, config);
     }
     
     /** DELETE /notifications/{id}/ */
-    async delete(id: string,config?: RequestConfig
+    async delete(id: string, config?: RequestConfig
     ): Promise<AxiosResponse<any>> {
         return await this.axiosDelete(`/notifications/${id}/`, config);
     }

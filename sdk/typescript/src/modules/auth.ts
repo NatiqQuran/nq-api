@@ -9,8 +9,8 @@ export class AuthLogin extends BaseController {
         super(conn, token);
     }
     /** POST /auth/login/ */
-    async auth_login_create(data: AuthType.AuthLoginRequestData, config?: RequestConfig
-    ): Promise<AxiosResponse<AuthType.AuthLoginResponseData>> {
+    async auth_login_create(data: AuthType.AuthLoginPostRequestData, config?: RequestConfig
+    ): Promise<AxiosResponse<AuthType.AuthLoginPostResponseData>> {
         return await this.axiosPost(`/auth/login/`, data, config);
     }
 }
@@ -42,8 +42,8 @@ export class AuthRegister extends BaseController {
         super(conn, token);
     }
     /** POST /auth/register/ */
-    async auth_register_create(data: AuthType.AuthRegisterRequestData, config?: RequestConfig
-    ): Promise<AxiosResponse<AuthType.AuthRegisterResponseData>> {
+    async auth_register_create(data: AuthType.AuthRegisterPostRequestData, config?: RequestConfig
+    ): Promise<AxiosResponse<AuthType.AuthRegisterPostResponseData>> {
         return await this.axiosPost(`/auth/register/`, data, config);
     }
 }

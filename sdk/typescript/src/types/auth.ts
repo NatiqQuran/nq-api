@@ -1,14 +1,14 @@
 
-export interface AuthLoginRequestData {
+export interface AuthLoginPostRequestData {
     password: string;
     username: string;
 }
-export interface AuthLoginResponseData {
+export interface AuthLoginPostResponseData {
     expiry: string;
     token: string;
     user: object;
 }
-export interface AuthRegisterRequestData {
+export interface AuthRegisterPostRequestData {
     email: string;
     first_name?: string;
     last_name?: string;
@@ -16,7 +16,7 @@ export interface AuthRegisterRequestData {
     password2: string;
     username: string;
 }
-export interface AuthRegisterResponseData {
+export interface AuthRegisterPostResponseData {
     token: string;
     user: object;
 }

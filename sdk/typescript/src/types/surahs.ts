@@ -107,12 +107,11 @@ export interface Surah {
     mushaf_uuid: string;
 }
 
-export interface Ayah {
+interface AyahInSurah {
     uuid: string;
     number: number;
-    text: string;
-    bismillah?: string;
-    breakers?: string;
     sajdah?: string;
-    surah?: string;
+    is_bismillah?: boolean;
+    bismillah_text?: string;
+    text: string;
 }
