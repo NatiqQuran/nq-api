@@ -1,0 +1,4350 @@
+openapi: 3.0.3
+info:
+  title: Natiq API
+  version: 1.0.0
+  description: Natiq Quran API
+paths:
+  /auth/login/:
+    post:
+      operationId: auth_login_create
+      description: Authenticate user credentials and return an authentication token
+        for API access
+      summary: Login with username and password to obtain a Knox token
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+            examples:
+              LoginExample:
+                value:
+                  username: testuser
+                  password: yourpassword
+                summary: Login Example
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - knoxApiToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                LoginResponseExample:
+                  value:
+                    token: knox_token_here
+                    user:
+                      username: testuser
+                      email: test@example.com
+                      first_name: Test
+                      last_name: User
+                    expiry: '2024-12-31T23:59:59Z'
+                  summary: Login Response Example
+          description: ''
+        '400':
+          description: Invalid credentials or validation error
+        '401':
+          description: Authentication failed
+  /auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: Invalidate the current user's authentication token. The user will
+        need to login again to access protected endpoints.
+      summary: Logout current user
+      tags:
+      - auth
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+          description: ''
+        '401':
+          description: Authentication required
+  /auth/logoutall/:
+    post:
+      operationId: auth_logoutall_create
+      description: Invalidate all authentication tokens for the current user across
+        all devices. The user will need to login again on any device to access protected
+        endpoints.
+      summary: Logout from all devices
+      tags:
+      - auth
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutAllResponse'
+          description: ''
+        '401':
+          description: Authentication required
+  /auth/register/:
+    post:
+      operationId: auth_register_create
+      description: Create a new user account with username, password, email, and optional
+        personal information. Returns user data and authentication token upon successful
+        registration.
+      summary: Register a new user account
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+            examples:
+              RegisterExample:
+                value:
+                  username: newuser
+                  password: yourpassword
+                  password2: yourpassword
+                  email: newuser@example.com
+                  first_name: New
+                  last_name: User
+                summary: Register Example
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - knoxApiToken: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+              examples:
+                RegisterResponseExample:
+                  value:
+                    user:
+                      username: newuser
+                      email: newuser@example.com
+                      first_name: New
+                      last_name: User
+                    token: knox_token_here
+                  summary: Register Response Example
+          description: ''
+        '400':
+          description: Validation error or user already exists
+        '422':
+          description: Password validation failed
+  /ayahs/:
+    get:
+      operationId: ayahs_list
+      summary: List all Ayahs (Quran verses)
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: surah_uuid
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - ayahs
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAyahList'
+          description: ''
+    post:
+      operationId: ayahs_create
+      summary: Create a new Ayah record
+      tags:
+      - ayahs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AyahAdd'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AyahAdd'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AyahAdd'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AyahAdd'
+          description: ''
+  /ayahs/{uuid}/:
+    get:
+      operationId: ayahs_retrieve
+      summary: Retrieve a specific Ayah by UUID
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - ayahs
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AyahSerializerView'
+          description: ''
+    put:
+      operationId: ayahs_update
+      summary: Update an existing Ayah record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - ayahs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ayah'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Ayah'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Ayah'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ayah'
+          description: ''
+    patch:
+      operationId: ayahs_partial_update
+      summary: Partially update an Ayah record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - ayahs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAyah'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAyah'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAyah'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ayah'
+          description: ''
+    delete:
+      operationId: ayahs_destroy
+      summary: Delete an Ayah record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - ayahs
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+  /groups/:
+    get:
+      operationId: groups_list
+      summary: List all groups
+      tags:
+      - groups
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Group'
+          description: ''
+    post:
+      operationId: groups_create
+      summary: Create a new group
+      tags:
+      - groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Group'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Group'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+          description: ''
+  /groups/{id}/:
+    get:
+      operationId: groups_retrieve
+      summary: Retrieve a specific group by ID
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - groups
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+          description: ''
+    put:
+      operationId: groups_update
+      summary: Update an existing group
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Group'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Group'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+          description: ''
+    patch:
+      operationId: groups_partial_update
+      summary: Partially update a group
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedGroup'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+          description: ''
+    delete:
+      operationId: groups_destroy
+      summary: Delete a group
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - groups
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+  /health/:
+    get:
+      operationId: health_retrieve
+      description: Health check endpoint that verifies the status of PostgreSQL database,
+        S3 storage, RabbitMQ, and Forced Alignment service connections. Returns detailed
+        status information for staff users.
+      summary: Health check endpoint
+      tags:
+      - health
+      security:
+      - knoxApiToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              examples:
+                HealthyResponseExample:
+                  value:
+                    status: healthy
+                    services:
+                      database:
+                        status: healthy
+                        details: Database connection successful
+                      s3:
+                        status: healthy
+                        details: S3 connection successful
+                      rabbitmq:
+                        status: healthy
+                        details: RabbitMQ connection successful
+                      forced_alignment:
+                        status: healthy
+                        details: Forced alignment service is responding
+                  summary: Healthy Response Example
+                DegradedResponseExample:
+                  value:
+                    status: degraded
+                    services:
+                      database:
+                        status: healthy
+                        details: Database connection successful
+                      s3:
+                        status: unhealthy
+                        details: AWS credentials not configured
+                      rabbitmq:
+                        status: healthy
+                        details: RabbitMQ connection successful
+                      forced_alignment:
+                        status: healthy
+                        details: Forced alignment service is responding
+                  summary: Degraded Response Example
+                Non-StaffUserResponseExample:
+                  value:
+                    status: healthy
+                  summary: Non-Staff User Response Example
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+          description: ''
+  /mushafs/:
+    get:
+      operationId: mushafs_list
+      summary: List all Mushafs (Quranic manuscripts/editions)
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - general
+      - mushafs
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMushafList'
+          description: ''
+    post:
+      operationId: mushafs_create
+      summary: Create a new Mushaf record
+      tags:
+      - mushafs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Mushaf'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Mushaf'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Mushaf'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mushaf'
+          description: ''
+  /mushafs/{uuid}/:
+    get:
+      operationId: mushafs_retrieve
+      summary: Retrieve a specific Mushaf by UUID
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - general
+      - mushafs
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mushaf'
+          description: ''
+    put:
+      operationId: mushafs_update
+      summary: Update an existing Mushaf record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - mushafs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Mushaf'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Mushaf'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Mushaf'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mushaf'
+          description: ''
+    patch:
+      operationId: mushafs_partial_update
+      summary: Partially update a Mushaf record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - mushafs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMushaf'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMushaf'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMushaf'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mushaf'
+          description: ''
+    delete:
+      operationId: mushafs_destroy
+      summary: Delete a Mushaf record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - mushafs
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+  /mushafs/import/:
+    post:
+      operationId: mushafs_import_create
+      summary: Import a Mushaf from a JSON file upload
+      tags:
+      - mushafs
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: JSON file containing the Mushaf data
+              required:
+              - file
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mushaf'
+          description: ''
+  /notifications/:
+    get:
+      operationId: notifications_list
+      summary: List all notifications
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - notifications
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+    post:
+      operationId: notifications_create
+      summary: Create a new notification
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Notification'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /notifications/{id}/:
+    get:
+      operationId: notifications_retrieve
+      summary: Retrieve a specific notification by UUID
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this notification.
+        required: true
+      tags:
+      - notifications
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+    put:
+      operationId: notifications_update
+      summary: Update an existing notification
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this notification.
+        required: true
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Notification'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+    patch:
+      operationId: notifications_partial_update
+      summary: Partially update a notification
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this notification.
+        required: true
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNotification'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+    delete:
+      operationId: notifications_destroy
+      summary: Delete a notification
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this notification.
+        required: true
+      tags:
+      - notifications
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+  /notifications/me/:
+    get:
+      operationId: notifications_me_list
+      description: Returns a paginated list of the current user's notifications. Marks
+        notifications in the current page as 'got_notification' if not already marked.
+      summary: Get the current user's notifications (paginated)
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - notifications
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+  /notifications/opened/:
+    get:
+      operationId: notifications_opened_retrieve
+      description: Marks a specific notification as 'opened_notification' using its
+        uuid (provided as a query parameter).
+      summary: Mark a notification as opened
+      parameters:
+      - in: query
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the notification to mark as opened.
+        required: true
+      tags:
+      - notifications
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /notifications/viewed/:
+    get:
+      operationId: notifications_viewed_retrieve
+      description: Marks all notifications with status 'got_notification' as 'viewed_notification'
+        for the current user.
+      summary: Mark notifications as viewed
+      tags:
+      - notifications
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /phrases/:
+    get:
+      operationId: phrases_list
+      summary: List all phrases
+      tags:
+      - phrases
+      security:
+      - knoxApiToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Phrase'
+          description: ''
+    post:
+      operationId: phrases_create
+      summary: Create a new phrase
+      tags:
+      - phrases
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Phrase'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Phrase'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Phrase'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Phrase'
+          description: ''
+  /phrases/{uuid}/:
+    get:
+      operationId: phrases_retrieve
+      summary: Retrieve a specific phrase by UUID
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - phrases
+      security:
+      - knoxApiToken: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Phrase'
+          description: ''
+    put:
+      operationId: phrases_update
+      summary: Update an existing phrase
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - phrases
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Phrase'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Phrase'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Phrase'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Phrase'
+          description: ''
+    patch:
+      operationId: phrases_partial_update
+      summary: Partially update a phrase
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - phrases
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPhrase'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPhrase'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPhrase'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Phrase'
+          description: ''
+    delete:
+      operationId: phrases_destroy
+      summary: Delete a phrase
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - phrases
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+  /phrases/modify/:
+    post:
+      operationId: phrases_modify_create
+      description: Modify phrase translations for a given language. The 'language'
+        query parameter is required.
+      summary: Modify phrase translations
+      parameters:
+      - in: query
+        name: language
+        schema:
+          type: string
+        description: Language code for the translation (required).
+        required: true
+      tags:
+      - phrases
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhraseModify'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PhraseModify'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhraseModify'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhraseModify'
+          description: ''
+  /profile/{uuid}/:
+    get:
+      operationId: profile_retrieve
+      summary: Retrieve the user's profile by uuid
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - profile
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+  /profile/me/:
+    get:
+      operationId: profile_me_retrieve
+      description: 'GET: Retrieve the current user''s profile. POST: Update the current
+        user''s profile information.'
+      summary: Get or update the current user's profile
+      tags:
+      - profile
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+    post:
+      operationId: profile_me_create
+      description: 'GET: Retrieve the current user''s profile. POST: Update the current
+        user''s profile information.'
+      summary: Get or update the current user's profile
+      tags:
+      - profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Profile'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Profile'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+  /recitations/:
+    get:
+      operationId: recitations_list
+      summary: List all Recitations (audio recordings)
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: mushaf
+        schema:
+          type: string
+          enum:
+          - hafs
+        description: 'Short name of the Mushaf to filter Recitations by. Common value:
+          ''hafs''. Any string is accepted. (e.g. ''hafs'', ''warsh'', etc.)'
+        required: true
+        examples:
+          Hafs:
+            value: hafs
+            summary: Most common
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - in: query
+        name: reciter_uuid
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the Reciter to filter Recitations by.
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - recitations
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRecitationListList'
+          description: ''
+    post:
+      operationId: recitations_create
+      summary: Create a new Recitation record
+      tags:
+      - recitations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recitation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Recitation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Recitation'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recitation'
+          description: ''
+  /recitations/{uuid}/:
+    get:
+      operationId: recitations_retrieve
+      summary: Retrieve a specific Recitation by UUID
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - recitations
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recitation'
+          description: ''
+    put:
+      operationId: recitations_update
+      summary: Update an existing Recitation record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - recitations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recitation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Recitation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Recitation'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recitation'
+          description: ''
+    patch:
+      operationId: recitations_partial_update
+      summary: Partially update a Recitation record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - recitations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRecitation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRecitation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRecitation'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recitation'
+          description: ''
+    delete:
+      operationId: recitations_destroy
+      summary: Delete a Recitation record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - recitations
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+  /recitations/{uuid}/upload/{surah_uuid}/:
+    post:
+      operationId: recitations_upload_create
+      description: 'Accepts a multipart/form-data request with parts: file (mp3) and
+        optional word_timestamps JSON list.'
+      summary: Upload a surah audio file and optional word-level timestamps for a
+        Recitation
+      parameters:
+      - in: path
+        name: surah_uuid
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - recitations
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                word_timestamps:
+                  type: string
+                  description: JSON list, optional
+              required:
+              - file
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /surahs/:
+    get:
+      operationId: surahs_list
+      summary: List all Surahs (Quran chapters)
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: mushaf
+        schema:
+          type: string
+          enum:
+          - hafs
+        description: 'Short name of the Mushaf to filter Surahs by. Common value:
+          ''hafs''. Any string is accepted. (e.g. ''hafs'', ''warsh'', etc.)'
+        required: true
+        examples:
+          Hafs:
+            value: hafs
+            summary: Most common
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - general
+      - surahs
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSurahList'
+          description: ''
+    post:
+      operationId: surahs_create
+      summary: Create a new Surah record
+      tags:
+      - surahs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Surah'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Surah'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Surah'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Surah'
+          description: ''
+  /surahs/{uuid}/:
+    get:
+      operationId: surahs_retrieve
+      summary: Retrieve a specific Surah by UUID
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - general
+      - surahs
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SurahDetail'
+          description: ''
+    put:
+      operationId: surahs_update
+      summary: Update an existing Surah record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - surahs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Surah'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Surah'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Surah'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Surah'
+          description: ''
+    patch:
+      operationId: surahs_partial_update
+      summary: Partially update a Surah record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - surahs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSurah'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSurah'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSurah'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Surah'
+          description: ''
+    delete:
+      operationId: surahs_destroy
+      summary: Delete a Surah record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - surahs
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+  /takhtits/:
+    get:
+      operationId: takhtits_list
+      summary: List all Takhtits (text annotations/notes)
+      parameters:
+      - in: query
+        name: mushaf
+        schema:
+          type: string
+          enum:
+          - hafs
+        description: 'Short name of the Mushaf to filter Takhtits by. Common value:
+          ''hafs''. Any string is accepted. (e.g. ''hafs'', ''warsh'', etc.)'
+      tags:
+      - general
+      - takhtits
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Takhtit'
+          description: ''
+    post:
+      operationId: takhtits_create
+      description: Create a new Takhtit. Requires mushaf_uuid and account_uuid in
+        the request body.
+      summary: Create a new Takhtit record
+      tags:
+      - takhtits
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mushaf_uuid:
+                  type: string
+                  format: uuid
+                  description: UUID of the mushaf to link.
+                account_uuid:
+                  type: string
+                  format: uuid
+                  description: UUID of the account to link.
+              required:
+              - mushaf_uuid
+              - account_uuid
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Takhtit'
+          description: ''
+  /takhtits/{uuid}/:
+    get:
+      operationId: takhtits_retrieve
+      summary: Retrieve a specific Takhtit by UUID
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - general
+      - takhtits
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Takhtit'
+          description: ''
+    put:
+      operationId: takhtits_update
+      summary: Update an existing Takhtit record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - takhtits
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Takhtit'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Takhtit'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Takhtit'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Takhtit'
+          description: ''
+    patch:
+      operationId: takhtits_partial_update
+      summary: Partially update a Takhtit record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - takhtits
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTakhtit'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTakhtit'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTakhtit'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Takhtit'
+          description: ''
+    delete:
+      operationId: takhtits_destroy
+      summary: Delete a Takhtit record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - takhtits
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+  /takhtits/{uuid}/ayahs_breakers/:
+    get:
+      operationId: takhtits_ayahs_breakers_list
+      description: Returns a flat list containing an entry for every ayah in this
+        takhtit, with breaker info similar to the mushaf ayah_map action.
+      summary: List all ayahs_breakers for this takhtit (ayahs map style)
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - takhtits
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AyahBreakersResponse'
+          description: ''
+    post:
+      operationId: takhtits_ayahs_breakers_create
+      description: Add a new ayahs_breaker to this takhtit. Requires ayah_uuid in
+        the request body.
+      summary: Add an ayahs_breaker to this takhtit
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - takhtits
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ayah_uuid:
+                  type: string
+                  format: uuid
+                  description: UUID of the ayah to link.
+                type:
+                  type: string
+                  description: Breaker type (see AyahBreakerType).
+              required:
+              - ayah_uuid
+              - type
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AyahBreaker'
+          description: ''
+  /takhtits/{uuid}/ayahs_breakers/{breaker_uuid}/:
+    get:
+      operationId: takhtits_ayahs_breakers_retrieve
+      summary: Retrieve a specific ayahs_breaker for this takhtit
+      parameters:
+      - in: path
+        name: breaker_uuid
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the ayahs_breaker.
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - takhtits
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AyahBreaker'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /takhtits/{uuid}/import/:
+    post:
+      operationId: takhtits_import_create
+      description: 'Accepts a JSON array of strings with the format ''{surah}:{ayah}''
+        that denote the ayah at which a new breaker (page by default) begins. Existing
+        breakers whose names start with the provided breaker type (default: ''page'')
+        will be removed before importing the new ones.'
+      summary: Import Ayah Breakers for the specified Takhtit
+      parameters:
+      - in: query
+        name: type
+        schema:
+          type: string
+        description: Breaker type (e.g., page, juz, hizb, ruku). Defaults to 'page'.
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - takhtits
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Text/JSON file containing a list of breakers (e.g.
+                    ['2:1', '2:6']).
+              required:
+              - file
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /takhtits/{uuid}/words_breakers/:
+    get:
+      operationId: takhtits_words_breakers_list
+      description: Returns a flat list containing an entry for every word with a breaker
+        for this takhtit, with a line counter (incremented for each breaker).
+      summary: List all words_breakers for this takhtit (with line counters)
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - takhtits
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WordBreakersResponse'
+          description: ''
+    post:
+      operationId: takhtits_words_breakers_create
+      description: Add a new words_breaker to this takhtit. Requires word_uuid in
+        the request body. Only type 'line' is allowed.
+      summary: Add a words_breaker to this takhtit
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - takhtits
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                word_uuid:
+                  type: string
+                  format: uuid
+                  description: UUID of the word to link.
+                type:
+                  type: string
+                  description: Breaker type (must be 'line').
+              required:
+              - word_uuid
+              - type
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordBreakerDetailResponse'
+          description: ''
+  /takhtits/{uuid}/words_breakers/{breaker_uuid}/:
+    get:
+      operationId: takhtits_words_breakers_retrieve
+      summary: Retrieve a specific words_breaker for this takhtit
+      parameters:
+      - in: path
+        name: breaker_uuid
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the words_breaker.
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - takhtits
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordBreakerDetailResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /translations/:
+    get:
+      operationId: translations_list
+      summary: List all Quran Translations
+      parameters:
+      - in: query
+        name: language
+        schema:
+          type: string
+          enum:
+          - ber
+          - aa
+          - ab
+          - ae
+          - af
+          - ak
+          - am
+          - an
+          - ar
+          - as
+          - av
+          - ay
+          - az
+          - ba
+          - be
+          - bg
+          - bh
+          - bi
+          - bm
+          - bn
+          - bo
+          - br
+          - bs
+          - ca
+          - ce
+          - ch
+          - co
+          - cr
+          - cs
+          - cu
+          - cv
+          - cy
+          - da
+          - de
+          - dv
+          - dz
+          - ee
+          - el
+          - en
+          - eo
+          - es
+          - et
+          - eu
+          - fa
+          - ff
+          - fi
+          - fj
+          - fo
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - gn
+          - gu
+          - gv
+          - ha
+          - he
+          - hi
+          - ho
+          - hr
+          - ht
+          - hu
+          - hy
+          - hz
+          - ia
+          - id
+          - ie
+          - ig
+          - ii
+          - ik
+          - io
+          - is
+          - it
+          - iu
+          - ja
+          - jv
+          - ka
+          - kg
+          - ki
+          - kj
+          - kk
+          - kl
+          - km
+          - kn
+          - ko
+          - kr
+          - ks
+          - ku
+          - kv
+          - kw
+          - ky
+          - la
+          - lb
+          - lg
+          - li
+          - ln
+          - lo
+          - lt
+          - lu
+          - lv
+          - mg
+          - mh
+          - mi
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - mt
+          - my
+          - na
+          - nb
+          - nd
+          - ne
+          - ng
+          - nl
+          - nn
+          - 'no'
+          - nr
+          - nv
+          - ny
+          - oc
+          - oj
+          - om
+          - or
+          - os
+          - pa
+          - pi
+          - pl
+          - ps
+          - pt
+          - qu
+          - rm
+          - rn
+          - ro
+          - ru
+          - rw
+          - sa
+          - sc
+          - sd
+          - se
+          - sg
+          - si
+          - sk
+          - sl
+          - sm
+          - sn
+          - so
+          - sq
+          - sr
+          - ss
+          - st
+          - su
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - ti
+          - tk
+          - tl
+          - tn
+          - to
+          - tr
+          - ts
+          - tt
+          - tw
+          - ty
+          - ug
+          - uk
+          - ur
+          - uz
+          - ve
+          - vi
+          - vo
+          - wa
+          - wo
+          - xh
+          - yi
+          - yo
+          - za
+          - zh
+          - zu
+        description: Language code to filter Translations by.
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: mushaf
+        schema:
+          type: string
+          enum:
+          - hafs
+        description: 'Short name of the Mushaf to filter Translations by. Common value:
+          ''hafs''. Any string is accepted. (e.g. ''hafs'', ''warsh'', etc.)'
+        required: true
+        examples:
+          Hafs:
+            value: hafs
+            summary: Most common
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - general
+      - translations
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTranslationListList'
+          description: ''
+    post:
+      operationId: translations_create
+      summary: Create a new Translation record
+      tags:
+      - translations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TranslationList'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TranslationList'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TranslationList'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslationList'
+          description: ''
+  /translations/{uuid}/:
+    get:
+      operationId: translations_retrieve
+      summary: Retrieve a specific Translation by UUID
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - general
+      - translations
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Translation'
+          description: ''
+    put:
+      operationId: translations_update
+      summary: Update an existing Translation record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - translations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TranslationList'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TranslationList'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TranslationList'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslationList'
+          description: ''
+    patch:
+      operationId: translations_partial_update
+      summary: Partially update a Translation record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - translations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTranslationList'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTranslationList'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTranslationList'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslationList'
+          description: ''
+    delete:
+      operationId: translations_destroy
+      summary: Delete a Translation record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - translations
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+  /translations/{uuid}/ayahs/:
+    get:
+      operationId: translations_ayahs_list
+      description: Returns a paginated list of all AyahTranslation objects for the
+        given Translation UUID. Optionally filter by surah_uuid (query param).
+      summary: List all AyahTranslations for this Translation
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: surah_uuid
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the Surah to filter AyahTranslations by.
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - translations
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAyahTranslationList'
+          description: ''
+  /translations/{uuid}/ayahs/{ayah_uuid}/:
+    get:
+      operationId: translations_ayahs_retrieve
+      description: 'Returns a single AyahTranslation object for the given Translation
+        UUID and Ayah UUID. URL: /translations/{translation_uuid}/ayahs/{ayah_uuid}/'
+      summary: Retrieve a single AyahTranslation for this Translation
+      parameters:
+      - in: path
+        name: ayah_uuid
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - translations
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AyahTranslation'
+          description: ''
+    post:
+      operationId: translations_ayahs_create
+      description: Provide the ayah's UUID in the URL path and the translation's UUID
+        as the primary resource path. Body requires only `text` (and optional `bismillah`).
+        If an AyahTranslation already exists it will be updated, otherwise it will
+        be created.
+      summary: Create or update (upsert) a specific AyahTranslation
+      parameters:
+      - in: path
+        name: ayah_uuid
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - translations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                bismillah:
+                  type: boolean
+              required:
+              - text
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AyahTranslation'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AyahTranslation'
+          description: ''
+    put:
+      operationId: translations_ayahs_update
+      description: Provide the ayah's UUID in the URL path and the translation's UUID
+        as the primary resource path. Body requires only `text` (and optional `bismillah`).
+        If an AyahTranslation already exists it will be updated, otherwise it will
+        be created.
+      summary: Create or update (upsert) a specific AyahTranslation
+      parameters:
+      - in: path
+        name: ayah_uuid
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - translations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                bismillah:
+                  type: boolean
+              required:
+              - text
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AyahTranslation'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AyahTranslation'
+          description: ''
+  /translations/import/:
+    post:
+      operationId: translations_import_create
+      summary: Import a Translation from a JSON file upload
+      tags:
+      - translations
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: JSON file containing the Translation data
+              required:
+              - file
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslationList'
+          description: ''
+  /users/:
+    get:
+      operationId: users_list
+      summary: List all users
+      tags:
+      - users
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+          description: ''
+    post:
+      operationId: users_create
+      summary: Create a new user
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /users/{uuid}/:
+    get:
+      operationId: users_retrieve
+      summary: Retrieve a specific user by UUID
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - users
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: users_update
+      summary: Update an existing user
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: users_partial_update
+      summary: Partially update a user
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    delete:
+      operationId: users_destroy
+      summary: Delete a user
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - users
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+  /words/:
+    get:
+      operationId: words_list
+      summary: List all Words in Ayahs
+      parameters:
+      - in: query
+        name: ayah_uuid
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the Ayah to filter Words by.
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - words
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedWordList'
+          description: ''
+    post:
+      operationId: words_create
+      summary: Create a new Word record
+      parameters:
+      - in: query
+        name: ayah_uuid
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the Ayah to associate the new Word with (if ayah_id is
+          not provided in the body).
+      tags:
+      - words
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Word'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Word'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Word'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Word'
+          description: ''
+  /words/{uuid}/:
+    get:
+      operationId: words_retrieve
+      summary: Retrieve a specific Word by UUID
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - words
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Word'
+          description: ''
+    put:
+      operationId: words_update
+      summary: Update an existing Word record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - words
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Word'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Word'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Word'
+        required: true
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Word'
+          description: ''
+    patch:
+      operationId: words_partial_update
+      summary: Partially update a Word record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - words
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWord'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWord'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWord'
+      security:
+      - knoxApiToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Word'
+          description: ''
+    delete:
+      operationId: words_destroy
+      summary: Delete a Word record
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - words
+      security:
+      - knoxApiToken: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    Ayah:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        sajdah:
+          enum:
+          - none
+          - null
+          type: string
+          description: '* `none` - None'
+          x-spec-enum-id: 00a003bebd5095a2
+          nullable: true
+        text:
+          type: string
+          readOnly: true
+        breakers:
+          type: string
+          readOnly: true
+        bismillah:
+          type: string
+          readOnly: true
+        surah:
+          type: string
+          readOnly: true
+      required:
+      - bismillah
+      - breakers
+      - number
+      - surah
+      - text
+      - uuid
+    AyahAdd:
+      type: object
+      properties:
+        surah_uuid:
+          type: string
+          format: uuid
+        text:
+          type: string
+        is_bismillah:
+          type: boolean
+          default: false
+        bismillah_text:
+          type: string
+          nullable: true
+        sajdah:
+          type: string
+          nullable: true
+      required:
+      - surah_uuid
+      - text
+    AyahBreaker:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          enum:
+          - page
+          - juz
+          - hizb
+          - rub
+          - manzil
+          - ruku
+          type: string
+          description: |-
+            * `page` - Page
+            * `juz` - Juz
+            * `hizb` - Hizb
+            * `rub` - Rub
+            * `manzil` - Manzil
+            * `ruku` - Ruku
+          x-spec-enum-id: 0246b6ba6b36fb6e
+      required:
+      - type
+      - uuid
+    AyahBreakersResponse:
+      type: object
+      description: Serializer for the ayahs_breakers endpoint response
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: UUID of the ayah
+        surah:
+          type: integer
+          description: Surah number
+        ayah:
+          type: integer
+          description: Ayah number
+        juz:
+          type: integer
+          nullable: true
+          description: Juz number (null if not a juz breaker)
+        hizb:
+          type: integer
+          nullable: true
+          description: Hizb number (null if not a hizb breaker)
+        ruku:
+          type: integer
+          nullable: true
+          description: Ruku number (null if not a ruku breaker)
+        page:
+          type: integer
+          nullable: true
+          description: Page number (null if not a page breaker)
+        rub:
+          type: integer
+          nullable: true
+          description: Rub number (null if not a rub breaker)
+        manzil:
+          type: integer
+          nullable: true
+          description: Manzil number (null if not a manzil breaker)
+      required:
+      - ayah
+      - hizb
+      - juz
+      - manzil
+      - page
+      - rub
+      - ruku
+      - surah
+      - uuid
+    AyahInSurah:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        sajdah:
+          enum:
+          - none
+          - null
+          type: string
+          description: '* `none` - None'
+          x-spec-enum-id: 00a003bebd5095a2
+          nullable: true
+        is_bismillah:
+          type: boolean
+        bismillah_text:
+          type: string
+          nullable: true
+        text:
+          type: string
+          readOnly: true
+      required:
+      - number
+      - text
+      - uuid
+    AyahSerializerView:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        sajdah:
+          enum:
+          - none
+          - null
+          type: string
+          description: '* `none` - None'
+          x-spec-enum-id: 00a003bebd5095a2
+          nullable: true
+        text:
+          type: string
+          readOnly: true
+        breakers:
+          type: string
+          readOnly: true
+        bismillah:
+          type: string
+          readOnly: true
+        surah:
+          allOf:
+          - $ref: '#/components/schemas/SurahInAyah'
+          readOnly: true
+        mushaf:
+          type: string
+          readOnly: true
+        words:
+          type: array
+          items:
+            $ref: '#/components/schemas/Word'
+          readOnly: true
+      required:
+      - bismillah
+      - breakers
+      - mushaf
+      - number
+      - surah
+      - text
+      - uuid
+      - words
+    AyahTranslation:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        translation_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        ayah_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        text:
+          type: string
+        bismillah:
+          type: string
+          nullable: true
+      required:
+      - ayah_uuid
+      - text
+      - translation_uuid
+      - uuid
+    Group:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+      required:
+      - name
+      - url
+    HealthCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: 'Overall health status: healthy, degraded, or unhealthy'
+        services:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: string
+            description: Service status information
+          description: Detailed status of individual services
+      required:
+      - status
+    Login:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+      - password
+      - username
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Authentication token
+        user:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          description: User information
+        expiry:
+          type: string
+          format: date-time
+          description: Token expiry time
+      required:
+      - expiry
+      - token
+      - user
+    LogoutAllResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Logout all confirmation message
+      required:
+      - detail
+    LogoutResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Logout confirmation message
+      required:
+      - detail
+    Mushaf:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        short_name:
+          type: string
+          maxLength: 100
+        name:
+          type: string
+        source:
+          type: string
+        status:
+          enum:
+          - draft
+          - pending_review
+          - published
+          type: string
+          description: |-
+            * `draft` - Draft
+            * `pending_review` - Pending review
+            * `published` - Published
+          x-spec-enum-id: 115b2e47abe9bd4d
+      required:
+      - name
+      - short_name
+      - uuid
+    Notification:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        resource_controller:
+          type: string
+          maxLength: 128
+        resource_action:
+          type: string
+          maxLength: 128
+        resource_uuid:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          enum:
+          - nothing_happened
+          - got_notification
+          - viewed_notification
+          - opened_notification
+          type: string
+          description: |-
+            * `nothing_happened` - Nothing Happened
+            * `got_notification` - User Got Notification
+            * `viewed_notification` - User Viewed Notification
+            * `opened_notification` - User Opened Notification
+          x-spec-enum-id: 6529547e00e18812
+        description:
+          type: string
+          nullable: true
+          maxLength: 255
+        message:
+          type: string
+          nullable: true
+        message_type:
+          enum:
+          - success
+          - failed
+          - warning
+          - pending
+          type: string
+          description: |-
+            * `success` - Success
+            * `failed` - Failed
+            * `warning` - Warning
+            * `pending` - Pending
+          x-spec-enum-id: d3849cd12549b2f1
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - resource_action
+      - resource_controller
+      - uuid
+    PaginatedAyahList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Ayah'
+    PaginatedAyahTranslationList:
+      type: array
+      items:
+        $ref: '#/components/schemas/AyahTranslation'
+    PaginatedMushafList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Mushaf'
+    PaginatedNotificationList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Notification'
+    PaginatedRecitationListList:
+      type: array
+      items:
+        $ref: '#/components/schemas/RecitationList'
+    PaginatedSurahList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Surah'
+    PaginatedTranslationListList:
+      type: array
+      items:
+        $ref: '#/components/schemas/TranslationList'
+    PaginatedWordList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Word'
+    PatchedAyah:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        sajdah:
+          enum:
+          - none
+          - null
+          type: string
+          description: '* `none` - None'
+          x-spec-enum-id: 00a003bebd5095a2
+          nullable: true
+        text:
+          type: string
+          readOnly: true
+        breakers:
+          type: string
+          readOnly: true
+        bismillah:
+          type: string
+          readOnly: true
+        surah:
+          type: string
+          readOnly: true
+    PatchedGroup:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+    PatchedMushaf:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        short_name:
+          type: string
+          maxLength: 100
+        name:
+          type: string
+        source:
+          type: string
+        status:
+          enum:
+          - draft
+          - pending_review
+          - published
+          type: string
+          description: |-
+            * `draft` - Draft
+            * `pending_review` - Pending review
+            * `published` - Published
+          x-spec-enum-id: 115b2e47abe9bd4d
+    PatchedNotification:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        resource_controller:
+          type: string
+          maxLength: 128
+        resource_action:
+          type: string
+          maxLength: 128
+        resource_uuid:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          enum:
+          - nothing_happened
+          - got_notification
+          - viewed_notification
+          - opened_notification
+          type: string
+          description: |-
+            * `nothing_happened` - Nothing Happened
+            * `got_notification` - User Got Notification
+            * `viewed_notification` - User Viewed Notification
+            * `opened_notification` - User Opened Notification
+          x-spec-enum-id: 6529547e00e18812
+        description:
+          type: string
+          nullable: true
+          maxLength: 255
+        message:
+          type: string
+          nullable: true
+        message_type:
+          enum:
+          - success
+          - failed
+          - warning
+          - pending
+          type: string
+          description: |-
+            * `success` - Success
+            * `failed` - Failed
+            * `warning` - Warning
+            * `pending` - Pending
+          x-spec-enum-id: d3849cd12549b2f1
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedPhrase:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        phrase:
+          type: string
+    PatchedRecitation:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        mushaf_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        get_mushaf_uuid:
+          type: string
+          readOnly: true
+        status:
+          enum:
+          - draft
+          - pending_review
+          - published
+          type: string
+          description: |-
+            * `draft` - Draft
+            * `pending_review` - Pending review
+            * `published` - Published
+          x-spec-enum-id: 115b2e47abe9bd4d
+        reciter_account_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        recitation_date:
+          type: string
+          format: date
+        recitation_location:
+          type: string
+        duration:
+          type: string
+        recitation_type:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        words_timestamps:
+          type: string
+          readOnly: true
+        ayahs_timestamps:
+          type: string
+          readOnly: true
+    PatchedSurah:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        mushaf:
+          allOf:
+          - $ref: '#/components/schemas/Mushaf'
+          readOnly: true
+        mushaf_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        name:
+          type: string
+          writeOnly: true
+        names:
+          type: string
+          readOnly: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        period:
+          enum:
+          - makki
+          - madani
+          - ''
+          - null
+          type: string
+          description: |-
+            * `makki` - Makki
+            * `madani` - Madani
+          x-spec-enum-id: 16a5294ca5382dd7
+          nullable: true
+        search_terms:
+          type: string
+          nullable: true
+        number_of_ayahs:
+          type: string
+          readOnly: true
+        bismillah:
+          type: string
+          readOnly: true
+    PatchedTakhtit:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        creator:
+          type: integer
+          readOnly: true
+        mushaf:
+          type: integer
+        account:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTranslationList:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        mushaf_uuid:
+          type: string
+          readOnly: true
+        translator_uuid:
+          type: string
+          readOnly: true
+        language:
+          type: string
+          maxLength: 5
+        release_date:
+          type: string
+          format: date
+          nullable: true
+        source:
+          type: string
+          nullable: true
+          maxLength: 300
+        status:
+          enum:
+          - draft
+          - pending_review
+          - published
+          type: string
+          description: |-
+            * `draft` - Draft
+            * `pending_review` - Pending review
+            * `published` - Published
+          x-spec-enum-id: 115b2e47abe9bd4d
+    PatchedUser:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+        password2:
+          type: string
+          writeOnly: true
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+    PatchedWord:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        ayah_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        text:
+          type: string
+    Phrase:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        phrase:
+          type: string
+      required:
+      - phrase
+      - uuid
+    PhraseModify:
+      type: object
+      properties:
+        phrases:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - phrases
+    Profile:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+      required:
+      - username
+    Recitation:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        mushaf_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        get_mushaf_uuid:
+          type: string
+          readOnly: true
+        status:
+          enum:
+          - draft
+          - pending_review
+          - published
+          type: string
+          description: |-
+            * `draft` - Draft
+            * `pending_review` - Pending review
+            * `published` - Published
+          x-spec-enum-id: 115b2e47abe9bd4d
+        reciter_account_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        recitation_date:
+          type: string
+          format: date
+        recitation_location:
+          type: string
+        duration:
+          type: string
+        recitation_type:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        words_timestamps:
+          type: string
+          readOnly: true
+        ayahs_timestamps:
+          type: string
+          readOnly: true
+      required:
+      - ayahs_timestamps
+      - created_at
+      - duration
+      - get_mushaf_uuid
+      - mushaf_uuid
+      - recitation_date
+      - recitation_location
+      - recitation_type
+      - reciter_account_uuid
+      - updated_at
+      - uuid
+      - words_timestamps
+    RecitationList:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          enum:
+          - draft
+          - pending_review
+          - published
+          type: string
+          description: |-
+            * `draft` - Draft
+            * `pending_review` - Pending review
+            * `published` - Published
+          x-spec-enum-id: 115b2e47abe9bd4d
+        recitation_date:
+          type: string
+          format: date
+        recitation_location:
+          type: string
+        duration:
+          type: string
+        recitation_type:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reciter_account_uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        mushaf_uuid:
+          type: string
+          format: uuid
+          readOnly: true
+      required:
+      - created_at
+      - duration
+      - mushaf_uuid
+      - recitation_date
+      - recitation_location
+      - recitation_type
+      - reciter_account_uuid
+      - updated_at
+      - uuid
+    RegisterResponse:
+      type: object
+      properties:
+        user:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          description: User information
+        token:
+          type: string
+          description: Authentication token
+      required:
+      - token
+      - user
+    Surah:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        mushaf:
+          allOf:
+          - $ref: '#/components/schemas/Mushaf'
+          readOnly: true
+        mushaf_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        name:
+          type: string
+          writeOnly: true
+        names:
+          type: string
+          readOnly: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        period:
+          enum:
+          - makki
+          - madani
+          - ''
+          - null
+          type: string
+          description: |-
+            * `makki` - Makki
+            * `madani` - Madani
+          x-spec-enum-id: 16a5294ca5382dd7
+          nullable: true
+        search_terms:
+          type: string
+          nullable: true
+        number_of_ayahs:
+          type: string
+          readOnly: true
+        bismillah:
+          type: string
+          readOnly: true
+      required:
+      - bismillah
+      - mushaf
+      - mushaf_uuid
+      - name
+      - names
+      - number
+      - number_of_ayahs
+      - uuid
+    SurahDetail:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        mushaf:
+          allOf:
+          - $ref: '#/components/schemas/Mushaf'
+          readOnly: true
+        mushaf_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        name:
+          type: string
+          writeOnly: true
+        names:
+          type: string
+          readOnly: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        period:
+          enum:
+          - makki
+          - madani
+          - ''
+          - null
+          type: string
+          description: |-
+            * `makki` - Makki
+            * `madani` - Madani
+          x-spec-enum-id: 16a5294ca5382dd7
+          nullable: true
+        search_terms:
+          type: string
+          nullable: true
+        number_of_ayahs:
+          type: string
+          readOnly: true
+        bismillah:
+          type: string
+          readOnly: true
+        ayahs:
+          type: array
+          items:
+            $ref: '#/components/schemas/AyahInSurah'
+          readOnly: true
+      required:
+      - ayahs
+      - bismillah
+      - mushaf
+      - mushaf_uuid
+      - name
+      - names
+      - number
+      - number_of_ayahs
+      - uuid
+    SurahInAyah:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        names:
+          type: string
+          readOnly: true
+      required:
+      - names
+      - uuid
+    Takhtit:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        creator:
+          type: integer
+          readOnly: true
+        mushaf:
+          type: integer
+        account:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - account
+      - created_at
+      - creator
+      - mushaf
+      - uuid
+    Translation:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        mushaf_uuid:
+          type: string
+          readOnly: true
+        translator_uuid:
+          type: string
+          readOnly: true
+        language:
+          enum:
+          - ar
+          - en
+          - fr
+          - ur
+          - tr
+          - id
+          - fa
+          - ru
+          - es
+          - de
+          - bn
+          - zh
+          - ms
+          - hi
+          - sw
+          - ps
+          - ku
+          - az
+          - ha
+          - so
+          - ta
+          - te
+          - ml
+          - pa
+          - sd
+          - ug
+          - uz
+          - kk
+          - ky
+          - tk
+          - tg
+          - syr
+          - ber
+          - am
+          - om
+          - wo
+          - yo
+          - other
+          type: string
+          description: |-
+            * `ar` - ar
+            * `en` - en
+            * `fr` - fr
+            * `ur` - ur
+            * `tr` - tr
+            * `id` - id
+            * `fa` - fa
+            * `ru` - ru
+            * `es` - es
+            * `de` - de
+            * `bn` - bn
+            * `zh` - zh
+            * `ms` - ms
+            * `hi` - hi
+            * `sw` - sw
+            * `ps` - ps
+            * `ku` - ku
+            * `az` - az
+            * `ha` - ha
+            * `so` - so
+            * `ta` - ta
+            * `te` - te
+            * `ml` - ml
+            * `pa` - pa
+            * `sd` - sd
+            * `ug` - ug
+            * `uz` - uz
+            * `kk` - kk
+            * `ky` - ky
+            * `tk` - tk
+            * `tg` - tg
+            * `syr` - syr
+            * `ber` - ber
+            * `am` - am
+            * `om` - om
+            * `wo` - wo
+            * `yo` - yo
+            * `other` - other
+          x-spec-enum-id: 2896e0b57f61fd1b
+        release_date:
+          type: string
+          format: date
+          nullable: true
+        source:
+          type: string
+          nullable: true
+          maxLength: 300
+        status:
+          enum:
+          - draft
+          - pending_review
+          - published
+          type: string
+          description: |-
+            * `draft` - Draft
+            * `pending_review` - Pending review
+            * `published` - Published
+          x-spec-enum-id: 115b2e47abe9bd4d
+      required:
+      - language
+      - mushaf_uuid
+      - translator_uuid
+      - uuid
+    TranslationList:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        mushaf_uuid:
+          type: string
+          readOnly: true
+        translator_uuid:
+          type: string
+          readOnly: true
+        language:
+          type: string
+          maxLength: 5
+        release_date:
+          type: string
+          format: date
+          nullable: true
+        source:
+          type: string
+          nullable: true
+          maxLength: 300
+        status:
+          enum:
+          - draft
+          - pending_review
+          - published
+          type: string
+          description: |-
+            * `draft` - Draft
+            * `pending_review` - Pending review
+            * `published` - Published
+          x-spec-enum-id: 115b2e47abe9bd4d
+      required:
+      - language
+      - mushaf_uuid
+      - translator_uuid
+      - uuid
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+        password2:
+          type: string
+          writeOnly: true
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+      required:
+      - email
+      - password
+      - password2
+      - username
+    Word:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          readOnly: true
+        ayah_uuid:
+          type: string
+          format: uuid
+          writeOnly: true
+        text:
+          type: string
+      required:
+      - ayah_uuid
+      - text
+      - uuid
+    WordBreakerDetailResponse:
+      type: object
+      description: Serializer for individual word breaker responses
+      properties:
+        word_uuid:
+          type: string
+          format: uuid
+          description: UUID of the word
+        type:
+          type: string
+          description: Breaker type (always 'line')
+      required:
+      - type
+      - word_uuid
+    WordBreakersResponse:
+      type: object
+      description: Serializer for the words_breakers endpoint response
+      properties:
+        word_uuid:
+          type: string
+          format: uuid
+          description: UUID of the word
+        line:
+          type: integer
+          description: Line number counter
+      required:
+      - line
+      - word_uuid
+  securitySchemes:
+    knoxApiToken:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "Token"
+tags:
+- name: general
+  description: General purpose endpoints
+- name: auth
+  description: Authentication and authorization endpoints (login, logout, register,
+    token management)
+- name: profile
+  description: Endpoints for retrieving and updating the current user's profile
+- name: users
+  description: Admin-only endpoints to list, create, update and delete users
+- name: groups
+  description: Admin-only endpoints to manage permission groups
+- name: mushafs
+  description: Manage Quranic manuscripts / editions
+- name: surahs
+  description: Manage chapters of the Quran (Surahs)
+- name: ayahs
+  description: Manage verses of the Quran (Ayahs)
+- name: words
+  description: Manage words within Quranic verses
+- name: translations
+  description: Create, update and list Quran translations and their verse/ayah translations
+- name: recitations
+  description: Manage audio recitations of the Quran
+- name: takhtits
+  description: Manage takhtits (textual annotations) for Quranic verses
+- name: phrases
+  description: Create and maintain phrases for the application
+- name: notifications
+  description: Endpoints related to user notifications
+- name: health
+  description: Health check endpoints for monitoring system status

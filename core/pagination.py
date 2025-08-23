@@ -17,3 +17,6 @@ class CustomLimitOffsetPagination(LimitOffsetPagination):
         Return only the data without pagination metadata.
         """
         return Response(data)
+
+    def get_paginated_response_schema(self, schema):
+        return schema
