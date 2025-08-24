@@ -15,13 +15,13 @@ services:
     ports:
       - "5432:5432"
 
-  nq-api:
+  natiq-api:
     image: natiqquran/nq-api:latest
-    container_name: nq-api
+    container_name: natiq-api
     ports:
       - "8001:80"
     depends_on:
-      - db
+      - postgres-db
       - forced-alignment
       - rabbitmq
     volumes:
@@ -31,12 +31,12 @@ services:
       DEBUG: 1
       DJANGO_LOGLEVEL: info
       DJANGO_ALLOWED_HOSTS: localhost
-      DJANGO_CORS_ALLOWED_ORIGINS: *
+      DJANGO_CORS_ALLOWED_ORIGINS: "*"
       CSRF_TRUSTED_ORIGINS: http://localhost:8001
       DATABASE_NAME: postgres
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
-      DATABASE_HOST: db
+      DATABASE_HOST: postgres-db
       DATABASE_PORT: 5432
       FORCED_ALIGNMENT_API_URL: http://forced-alignment:5000
       FORCED_ALIGNMENT_SECRET_KEY: bruh
@@ -50,7 +50,7 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - static:/static:ro
     depends_on:
-      - api
+      - natiq-api
   forced-alignment:
     image: natiqquran/forced-alignment
     container_name: forced-alignment
@@ -73,9 +73,9 @@ services:
     command: -A api worker -l info
     environment: *default_env
     depends_on:
-      - db
+      - postgres-db
       - rabbitmq
-      - api
+      - natiq-api
 volumes:
   postgres_data:
   static:
