@@ -67,8 +67,6 @@ def forced_alignment_result(self, words_timestamps):
         except Recitation.DoesNotExist:
             raise ValueError(f"Recitation with uuid {recitation_uuid} not found")
 
-        print(words_timestamps_data)
-
         try:
             surah = Surah.objects.get(uuid=surah_uuid)
         except Surah.DoesNotExist:
@@ -193,7 +191,6 @@ def forced_alignment(self, audio_url, text, additional):
         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "task_type": "forcedalignment_processing",
     }
-    print("TASK info:", task_info)
 
     return {
         "status": "queued",
