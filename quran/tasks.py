@@ -205,7 +205,7 @@ def import_mushaf_task(quran_data, user_id):
     user = User.objects.get(id=user_id)
     mushaf_data = quran_data["mushaf"]
     compiler = None
-    published = "published" if mushaf_data["published"] is True else "draft"
+    published = "published" if mushaf_data.get("published") is True else "draft"
     try:
         if mushaf_data["compiler_name"]:
             compiler, created = User.objects.get_or_create(
@@ -254,9 +254,11 @@ def import_mushaf_task(quran_data, user_id):
                 SurahName.objects.bulk_create(surah_name_objs)
 
             ayah_objs = []
+            index = 0
             for surah_data in quran_data["surahs"]:
                 surah = surahs_by_number[surah_data["number"]]
                 for ayah in surah_data["ayahs"]:
+                    index += 1
                     # Calculate length from words if available
                     length = 0
                     if "words" in ayah:
@@ -278,6 +280,7 @@ def import_mushaf_task(quran_data, user_id):
                         surah=surah,
                         ayah_id=a.id,
                         creator_id=user.id,
+                        order=index,
                     )
 
             Ayah.objects.bulk_create(ayah_objs)
@@ -338,64 +341,64 @@ def import_translation_task(translation_data, user_id):
     user = User.objects.get(id=user_id)
     try:
         with transaction.atomic():
-        translator, _ = User.objects.get_or_create(
-            username=translation_data["translator_username"]
-        )
-        rom = RasmOlMushaf.objects.get(slug=translation_data["rasm_ol_mushaf"])
-        # Create new transmission for translation
-        transmission = Transmission.objects.create(
-            creator_id = user.id,
-            rasm_ol_mushaf=rom,
-            slug=f"translation-{translation_data["translator_username"]}-{translation_data["language"]}",
-        )
-        translation = Translation.objects.create(
-            creator_id=user.id,
-            transmission=transmission,
-            translator_id=translator.id,
-            source=translation_data["source"],
-            status="published",
-            language=translation_data["language"],
-        )
-        # Build a lookup for Ayah objects of this mushaf keyed by (surah_number, ayah_number)
-        ayah_lookup = {
-            (a.surah.number, a.number): a.id
-            for a in Ayah.objects.filter(surah__rom_surah_ayahs_surah__rasm_ol_mushaf=rom)
-            .only("id", "number", "surah__number")
-            .select_related("surah")
-        }
+            translator, _ = User.objects.get_or_create(
+                username=translation_data["translator_username"]
+            )
+            rom = RasmOlMushaf.objects.get(slug=translation_data["rasm_ol_mushaf"])
+            # Create new transmission for translation
+            transmission = Transmission.objects.create(
+                creator_id = user.id,
+                rasm_ol_mushaf=rom,
+                slug=f"translation-{translation_data["translator_username"]}-{translation_data["language"]}",
+            )
+            translation = Translation.objects.create(
+                creator_id=user.id,
+                transmission=transmission,
+                translator_id=translator.id,
+                source=translation_data["source"],
+                status="published",
+                language=translation_data["language"],
+            )
+            # Build a lookup for Ayah objects of this mushaf keyed by (surah_number, ayah_number)
+            ayah_lookup = {
+                (a.surah.number, a.number): a.id
+                for a in Ayah.objects.filter(surah__rom_surah_ayahs_surah__rasm_ol_mushaf=rom)
+                .only("id", "number", "surah__number")
+                .select_related("surah")
+            }
 
-        ayah_translations = []
-        # Root-level bismillah text (if provided) – used as default for all ayahs
-        default_bismillah = translation_data.get("bismillah_text")
+            ayah_translations = []
+            # Root-level bismillah text (if provided) – used as default for all ayahs
+            default_bismillah = translation_data.get("bismillah_text")
 
-        for surah_data in translation_data["surahs"]:
-            surah_number = surah_data["number"]
-            for ayah_data in surah_data["ayah_translations"]:
-                ayah_number = ayah_data["number"]
-                ayah_id = ayah_lookup.get((surah_number, ayah_number))
-                if ayah_id is None:
-                    # Skip if corresponding ayah not found (data mismatch)
-                    continue
-                ayah_translations.append(
-                    AyahTranslation(
-                        creator_id=user.id,
-                        translation_id=translation.id,
-                        ayah_id=ayah_id,
-                        text=ayah_data["text"],
-                        bismillah=ayah_data.get("bismillah_text") or default_bismillah,
+            for surah_data in translation_data["surahs"]:
+                surah_number = surah_data["number"]
+                for ayah_data in surah_data["ayah_translations"]:
+                    ayah_number = ayah_data["number"]
+                    ayah_id = ayah_lookup.get((surah_number, ayah_number))
+                    if ayah_id is None:
+                        # Skip if corresponding ayah not found (data mismatch)
+                        continue
+                    ayah_translations.append(
+                        AyahTranslation(
+                            creator_id=user.id,
+                            translation_id=translation.id,
+                            ayah_id=ayah_id,
+                            text=ayah_data["text"],
+                            bismillah=ayah_data.get("bismillah_text") or default_bismillah,
+                        )
                     )
-                )
-        AyahTranslation.objects.bulk_create(ayah_translations)
-        Notification.objects.create(
-            user=user,
-            resource_controller="translations",
-            resource_action="import",
-            resource_uuid=translation.id,
-            status=Notification.STATUS_NOTHING,
-            description=f"Translation import complete",
-            message=f"Translation {translation.id} imported successfully.",
-            message_type=Notification.MESSAGE_TYPE_SUCCESS,
-        )
+            AyahTranslation.objects.bulk_create(ayah_translations)
+            Notification.objects.create(
+                user=user,
+                resource_controller="translations",
+                resource_action="import",
+                resource_uuid=translation.id,
+                status=Notification.STATUS_NOTHING,
+                description=f"Translation import complete",
+                message=f"Translation {translation.id} imported successfully.",
+                message_type=Notification.MESSAGE_TYPE_SUCCESS,
+            )
     except Exception:
         Notification.objects.create(
             user=user,
