@@ -64,6 +64,7 @@ class RomSurahAyahs(models.Model):
     ayah = models.ForeignKey(
         "Ayah", on_delete=models.CASCADE, related_name="rom_surah_ayahs_ayah"
     )
+    order = models.IntegerField()
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

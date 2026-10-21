@@ -21,6 +21,25 @@ from quran.serializers import (
 )
 
 
+class DictCompare:
+    def __init__(self, first_dict, second_dict):
+        self.first = first_dict
+        self.second = second_dict
+
+    def update_second_dict(self, new_second):
+        self.second = new_second
+
+    def compare_two_dicts_with_condition(self, condition):
+        """
+        condition: function
+        """
+        for k, v in self.second.items():
+            same_key = self.first.get(k)
+            if same_key and v and condition(same_key, v):
+                return False
+        return True
+
+
 @extend_schema_view(
     list=extend_schema(
         summary="List all Takhtits (text annotations/notes)",
@@ -125,8 +144,15 @@ class TakhtitViewSet(viewsets.ModelViewSet):
         url_path="ayahs_breakers",
     )
     def ayahs_breakers(self, request, id=None):
-        # TODO
-        # type_filter = self.request.query_params.get("type")
+        breaker_keys = ["page", "juz", "hizb", "rub", "manzil"]
+
+        into_int_or_none = lambda x: int(x) if (x is not None) else x
+
+        # Dict of filters
+        filters = {
+            key: into_int_or_none(self.request.query_params.get(key))
+            for key in breaker_keys
+        }
 
         takhtit = self.get_object()
         ayah_ids = AyahBreaker.objects.filter(takhtit=takhtit).values_list(
@@ -140,9 +166,7 @@ class TakhtitViewSet(viewsets.ModelViewSet):
         )
 
         breakers_qs = (
-            AyahBreaker.objects.filter(
-                takhtit=takhtit, ayah__in=ayah_qs, type=type_filter
-            )
+            AyahBreaker.objects.filter(takhtit=takhtit, ayah__in=ayah_qs)
             .select_related("ayah", "ayah__surah")
             .order_by("ayah__surah__number", "ayah__number")
         )
@@ -156,27 +180,35 @@ class TakhtitViewSet(viewsets.ModelViewSet):
         breakers_by_ayah = defaultdict(list)
         for br in breakers_qs:
             breakers_by_ayah[br.ayah_id].append(br.type.lower())
-        counters = {k: 0 for k in ["juz", "hizb", "page", "rub", "manzil"]}
+        counters = {k: 0 for k in breaker_keys}
         data = []
+        dc = DictCompare(filters, counters)
+
         for ayah in ayah_qs:
             for br_type in breakers_by_ayah.get(ayah.id, []):
                 key = br_type.split()[0]
                 if key in counters:
                     counters[key] += 1
-            data.append(
-                {
-                    "id": str(ayah.id),
-                    "surah_id": ayah.surah.id,
-                    "surah_number": ayah.surah.number,
-                    "ayah_number": ayah.number,
-                    "length": ayah.length,
-                    "juz": breaker_or_none(counters["juz"]),
-                    "hizb": breaker_or_none(counters["hizb"]),
-                    "page": breaker_or_none(counters["page"]),
-                    "rub": breaker_or_none(counters["rub"]),
-                    "manzil": breaker_or_none(counters["manzil"]),
-                }
-            )
+            dc.update_second_dict(counters)
+            last_compare = dc.compare_two_dicts_with_condition(lambda x, y: x < y)
+            if not last_compare:
+                break
+
+            if dc.compare_two_dicts_with_condition(lambda x, y: x != y):
+                data.append(
+                    {
+                        "id": str(ayah.id),
+                        "surah_id": ayah.surah.id,
+                        "surah_number": ayah.surah.number,
+                        "ayah_number": ayah.number,
+                        "length": ayah.length,
+                        "juz": breaker_or_none(counters["juz"]),
+                        "hizb": breaker_or_none(counters["hizb"]),
+                        "page": breaker_or_none(counters["page"]),
+                        "rub": breaker_or_none(counters["rub"]),
+                        "manzil": breaker_or_none(counters["manzil"]),
+                    }
+                )
         paginator = CustomLimitOffsetPagination()
         page = paginator.paginate_queryset(data, request)
         return Response(page)
